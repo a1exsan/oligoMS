@@ -133,6 +133,37 @@ class oligoSeq():
                     self.modifications[k] += 1
         return out
 
+    def string2seq_alpha(self, s, alpha='A C G T'):
+        ll = list(s)
+        out = ''
+        for l in ll:
+            if l in alpha.split(' '):
+                out += l
+            for k in self.modifications_dict.keys():
+                if l in self.modifications_dict[k].split(' '):
+                    self.modifications[k] += 1
+        return out
+
+    def seq_end_cut(self, s, cut_number=1, end_type="5'"):
+        seq = list(self.string2seq_alpha(s, alpha='A C G T +'))
+        if end_type == "5'":
+            for i in range(cut_number):
+                if seq[0] in ['+']:
+                    seq.pop(0)
+                if seq[0] in 'A C G T'.split(' '):
+                    seq.pop(0)
+            #print(seq)
+
+        if end_type == "3'":
+            for i in range(cut_number):
+                if seq[-1] in 'A C G T'.split(' '):
+                    seq.pop(-1)
+                if seq[-1] in ['+']:
+                    seq.pop(-1)
+            #print(seq)
+
+        return ''.join(seq)
+
     def getBruttoFormula(self):
         f = ''
         for n in self.seq:
