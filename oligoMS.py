@@ -179,6 +179,12 @@ class oligosDeconvolution():
         df = df[df['rt'] >= rt_min]
         return data.drop(list(df.index))
 
+    @staticmethod
+    def rt_filtration(data, rt_min, rt_max):
+        df = data[data['rt'] <= rt_max]
+        df = df[df['rt'] >= rt_min]
+        return df
+
 class MassExplainer():
     def __init__(self, seq, mass_tab):
         self.mass_tab = mass_tab
@@ -351,6 +357,16 @@ class oligoMassExplainer(MassExplainer):
             if name != 'unknown':
                 massed_clust.loc[massed_clust['class'] == clss, 'name'] = name
         return massed_clust
+
+    def drop_artifacts(self):
+        df = self.mass_tab[self.mass_tab['name'] != 'unknown']
+        for name in list(set(df['name'])):
+            df = self.mass_tab[self.mass_tab['name'] == name]
+            max_mass = df['mass'].max() - 1000
+            rt_min = df['rt'].min()
+            rt_max = df['rt'].max()
+            self.mass_tab = oligosDeconvolution.drop_data(self.mass_tab, max_mass, 0, rt_min, rt_max)
+
 
 
 def test_deconv():

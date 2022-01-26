@@ -19,7 +19,8 @@ def deconvolution(data, is_positive):
     return deconv.deconvolute(), deconv
 
 
-is_positive_mode = st.sidebar.checkbox('Positive mode')
+#is_positive_mode = st.sidebar.checkbox('Positive mode')
+is_positive_mode = False
 sequence = st.sidebar.text_area('Enter sequence', '')
 uploaded_file = st.sidebar.file_uploader("Choose a file (*.mzML)")
 
@@ -30,15 +31,11 @@ with col2:
 
     polish_bkg = st.checkbox('polish background')
 
-    if is_positive_mode:
-        bkg_treshold = st.select_slider('select background treshold', options=range(100, 6000, 100), value=5000)
-        st.write('background treshold', bkg_treshold)
-    else:
-        bkg_treshold = st.select_slider('select background treshold', options=range(100, 6000, 100), value=500)
-        st.write('background treshold', bkg_treshold)
+    rt_interval = st.select_slider('Retention time interval', options=range(100, 2010, 10), value=(100, 1500))
+
+    bkg_treshold = st.select_slider('select background treshold', options=range(100, 6000, 100), value=500)
 
     neighbor_treshold = st.select_slider('select neighbor treshold', options=range(10, 100, 5), value=60)
-    st.write('neighbor treshold', neighbor_treshold)
 
     if is_positive_mode:
         low_intens_treshold = st.select_slider('low intensity treshold', options=range(1000, 100000, 1000), value=65000)
@@ -49,9 +46,9 @@ with col2:
 
     is_deconv = st.checkbox('Deconvolution')
 
-    is_droped = st.checkbox('drop missed points')
-
     is_identify = st.checkbox('Identifying')
+
+    is_droped = st.checkbox('drop failed points')
 
     is_drop_unk = st.checkbox('Drop unknown')
 
@@ -73,40 +70,27 @@ with col1:
 
         if is_deconv:
             deconv_data, deconv_obj = deconvolution(data, is_positive=is_positive_mode)
-
-        if is_droped:
-            max_mass = deconv_data['mass'].loc[0]
-            df = deconv_data[deconv_data['mass'] >= max_mass - 0.8]
-            df = df[df['mass'] <= max_mass + 0.8]
-            max_mass -= 1000
-            rt_min = df['intens'].min()
-            rt_max = df['intens'].max()
-            deconv_data = deconv_obj.drop_data(deconv_data, max_mass, 0, rt_min, rt_max)
+            deconv_data = deconv_obj.rt_filtration(deconv_data, rt_interval[0], rt_interval[1])
 
         if is_identify and sequence != '':
-            if is_positive_mode:
-                explainer = lcms.peptideMassExplainer(sequence, deconv_data)
+
+            explainer = lcms.oligoMassExplainer(sequence, deconv_data)
+            explainer.explain_2(mass_treshold=2)
+            explainer.group_by_type_2()
+
+            if is_droped:
+                explainer.drop_artifacts()
                 explainer.explain_2(mass_treshold=2)
                 explainer.group_by_type_2()
-            else:
-                explainer = lcms.oligoMassExplainer(sequence, deconv_data)
-                explainer.explain_2(mass_treshold=2)
-                explainer.group_by_type_2()
+
 
         if is_drop_unk and is_identify and sequence != '':
             deconv_data = explainer.drop_unknown(explainer.mass_tab)
-            if is_positive_mode:
-                explainer = lcms.peptideMassExplainer(sequence, deconv_data)
-                explainer.explain_2(mass_treshold=2)
-                explainer.group_by_type_2()
-            else:
-                explainer = lcms.oligoMassExplainer(sequence, deconv_data)
-                explainer.explain_2(mass_treshold=2)
-                explainer.group_by_type_2()
 
-            #st.write(sequence)
-            #st.write(explainer.molecular_weight)
-            #st.write(deconv_data)
+            explainer = lcms.oligoMassExplainer(sequence, deconv_data)
+            explainer.explain_2(mass_treshold=2)
+            explainer.group_by_type_2()
+
 
         rt_max = int(round(data[:, 0].max(), 0))
 
@@ -129,7 +113,7 @@ with col1:
             spec_viewer.draw_map(is_show=False)
             st.bokeh_chart(spec_viewer.plot, use_container_width=True)
 
-        if is_deconv:
+        if is_deconv and not is_identify:
             mass_viewer = msvis.bokeh_mass_map(deconv_data['rt'],
                                                 deconv_data['mono_mass'],
                                                 deconv_data['intens'], rt_position=-1, title='Deconvolution 2D map',
@@ -137,6 +121,16 @@ with col1:
             mass_viewer.ylabel = 'Mass, Da'
             mass_viewer.draw_map(is_show=False)
             st.bokeh_chart(mass_viewer.plot, use_container_width=True)
+
+        elif is_deconv and is_identify:
+            mass_viewer = msvis.bokeh_mass_map(explainer.mass_tab['rt'],
+                                               explainer.mass_tab['mono_mass'],
+                                               explainer.mass_tab['intens'], rt_position=-1, title='Deconvolution 2D map',
+                                               corner_points={'rt': [rt_left, rt_max], 'mz': [100, 3000]})
+            mass_viewer.ylabel = 'Mass, Da'
+            mass_viewer.draw_map(is_show=False)
+            st.bokeh_chart(mass_viewer.plot, use_container_width=True)
+
 
         if is_identify:
             st.write('Table of identified Peaks:')
