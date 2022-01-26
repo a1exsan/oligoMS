@@ -11,25 +11,6 @@ pd.set_option('display.max_columns', 500)
 
 
 def open_mzml(fn, int_treshold=5000, max_mz=3200, rt_left=100):
-    exp = poms.MSExperiment()
-    poms.MzMLFile().load(fn, exp)
-
-    vec = [0 for i in range(int(round(max_mz, 0)))]
-
-    data = []
-    for s in tqdm(exp.getSpectra()):
-        rt = s.getRT()
-        if rt >= rt_left:
-            for mz, ii in zip(s.get_peaks()[0], s.get_peaks()[1]):
-                if ii >= int_treshold:
-                    v = [rt, mz, ii]
-                    data.append(v)
-                    vec[int(round(mz, 0))] += 1
-
-    return np.array(data), vec
-
-
-def open_mzml_2(fn, int_treshold=5000, max_mz=3200, rt_left=100):
 
     exp = pymzml.run.Reader(fn)
 
@@ -367,41 +348,14 @@ class oligoMSanalysys():
 
         data = substract_bkg(data, bkg, treshold=self.int_treshold)
 
-        #with open('data.pkl', 'wb') as f:
-        #    pickle.dump(data, f)
-
-        viewer = msvis.plotly_ms_map(data[:, 0], data[:, 1], data[:, 2])
-        #viewer.transperancy = 0.2
-        viewer.draw_map()
-
-        #map_v = msvis.view_intens_map(map)
-        #map_v.color = 'red'
-        #map_v.draw_map()
-
         for i in range(3):
             map = get_intensity_map(data, low_treshold=self.low_treshold, param=self.scale_param)
             data = find_inner_points(data, map, neighbor_treshold=self.neighbor_treshold, param=self.scale_param)
 
-        #viewer = msvis.simple_ms_map(data[:, 0], data[:, 1], data[:, 2])
-        #viewer.transperancy = 0.2
-        #viewer.draw_map()
-
-        #map_v = msvis.view_intens_map(map)
-        #map_v.color = 'red'
-        #map_v.draw_map()
-
-        #clust = find_clusters(data, map, param=self.scale_param)
 
         clust = find_clusters_alg_2(data, low_intens_treshold=self.low_treshold
                                         , crit_dist=self.critic_distance
                                         , rt_cf=self.rt_coeff, number=self.points_number)
-
-        #clust_v = msvis.clusters_ms_map(clust[:, 0], clust[:, 1], clust[:, 2], clust[:, 3])
-        #clust_v.transperancy = 0.01
-        #clust_v.draw_map()
-
-        #viewer = msvis.simple_ms_map(clust[:, 0], clust[:, 1], clust[:, 2])
-        #viewer.draw_map()
 
         clust = filtrate_clusters(clust, dt_treshold=self.dt_treshold)
 
@@ -523,54 +477,6 @@ class oligosDeconvolution():
         #print(data)
         #print(df)
         return data.drop(list(df.index))
-
-
-class peptideMSanalysys():
-    def __init__(self, fn, int_treshold=5000, neighbor_treshold=80, max_mz=1700, rt_left=100):
-        # путь к файлу с расширением mzML, файл с LCMS олигонуклеотида, записанный в MS1 режиме
-        self.fn = fn
-        # параметр фильтрации фона: int_treshold - верхняя граница отчечения фона
-        self.int_treshold = int_treshold
-        # параметр кластеризации: neighbor_treshold - нижний предел количества необходимых соседей в %, чтобы определить
-        # принадлежность точки к кластеру.
-        self.neighbor_treshold = neighbor_treshold
-        # фильтр по массе
-        self.max_mz = max_mz
-        # левая граница по времени хроматограммы в сек.
-        self.rt_left = rt_left
-        # нижняя граница по интенсивности
-        self.low_treshold = 1000
-        self.top_number = 3
-        self.delta_mass = 4
-        self.delta_rt = 40
-        self.dt_treshold = 25 # параметр фильтрации фона по ширине пика верхняя граница в процентах
-
-        self.mass_tab = None
-
-    def ms_analysis(self):
-        data, bkg = open_mzml(self.fn, int_treshold=5000, max_mz=self.max_mz, rt_left=self.rt_left)
-
-        data = substract_bkg(data, bkg, treshold=self.int_treshold)
-
-        map = get_intensity_map(data, low_treshold=self.low_treshold)
-
-        data = find_inner_points(data, map, neighbor_treshold=self.neighbor_treshold)
-
-        map = get_intensity_map(data, low_treshold=self.low_treshold)
-
-        clust = find_clusters(data, map)
-
-        clust = filtrate_clusters(clust, dt_treshold=self.dt_treshold)
-
-        cluster_tab = cluster_analysis(clust, top_number=self.top_number, negative_mode=False)
-
-        mass_res = group_mass_by_charge(cluster_tab, delta_mass=self.delta_mass, delta_rt=self.delta_rt)
-
-        self.mass_tab = pd.DataFrame(mass_res)
-
-        plt.scatter(clust[:, 0], clust[:, 1], color='red', s=8)
-        plt.show()
-
 
 class MassExplainer():
     def __init__(self, seq, mass_tab):
@@ -751,89 +657,6 @@ class oligoMassExplainer(MassExplainer):
         return massed_clust
 
 
-
-class peptideMassExplainer(MassExplainer):
-    def __init__(self, seq, mass_tab):
-        super().__init__(seq, mass_tab)
-
-    def generate_hypothesis(self):
-        self.hypo_tab = []
-
-        d = {}
-        d['name'], d['seq'], d['deltaM'], d['type'], d['cf'], d['label'] = 'main', self.seq, 0., 'main', 1, str(0)
-        self.hypo_tab.append(d)
-
-        seq = poms.AASequence.fromString(self.seq)
-
-        for i in range(len(self.seq) - 1):
-            prefix = seq.getPrefix(i + 1)
-            suffix = seq.getSuffix(len(self.seq) - 1 - i)
-
-            #print(f'{str(prefix)} {str(suffix)} mass {round(prefix.getAverageWeight(), 2)} mass {round(suffix.getAverageWeight(), 2)}')
-
-            d = {}
-            d['name'], d['seq'], d['deltaM'], d['type'], d['cf'], d['label'] = f'N-frag_{i + 1}', str(prefix), 0., f'N-frag', 1, str(i + 1)
-            self.hypo_tab.append(d)
-
-            d = {}
-            d['name'], d['seq'], d['deltaM'], d['type'], d['cf'], d['label'] = f'C-frag_{len(self.seq) - i - 1}', str(suffix), 0., f'C-frag', 1, str(i + 1)
-            self.hypo_tab.append(d)
-
-    def group_by_type(self):
-        self.gTab = self.mass_tab.groupby('type').agg(
-            {'mass':'first', 'area':'sum', 'rt':'mean',
-            'charge':'max', 'class':'max', 'area%':'sum',
-            'type':'first', 'name':'first', 'seq':'first',
-             'label':'first'})
-
-        self.gTab['purity%'] = (self.gTab['area'] / self.gTab['area'].sum()) * 100
-
-        self.gTab = self.gTab.reset_index(drop=True)
-
-
-    def explain(self, mass_treshold=3):
-
-        massTab = list(self.mass_tab.T.to_dict().values())
-        for h in self.hypo_tab:
-            #dna = osa.dnaSeq(h['seq'])
-            molecular_weight = poms.AASequence.fromString(h['seq']).getAverageWeight()
-            for i, m in enumerate(massTab):
-                if abs(m['mass'] - molecular_weight * h['cf'] - h['deltaM']) <= mass_treshold:
-                    massTab[i]['type'] = h['type']
-                    massTab[i]['name'] = h['name']
-                    massTab[i]['seq'] = h['seq']
-                    massTab[i]['label'] = h['label']
-
-        self.mass_tab = pd.DataFrame(massTab)
-        self.mass_tab = self.mass_tab.sort_values(by='area', ascending=False)
-        self.mass_tab = self.mass_tab.fillna('unknown')
-
-    def explain_2(self, mass_treshold=3):
-
-        massTab = list(self.mass_tab.T.to_dict().values())
-        for h in self.hypo_tab:
-            molecular_weight = poms.AASequence.fromString(h['seq']).getAverageWeight()
-            for i, m in enumerate(massTab):
-                if abs(m['mass'] - molecular_weight * h['cf'] - h['deltaM']) <= mass_treshold:
-                    massTab[i]['type'] = h['type']
-                    massTab[i]['name'] = h['name']
-                    massTab[i]['seq'] = h['seq']
-
-        self.mass_tab = pd.DataFrame(massTab)
-        self.mass_tab = self.mass_tab.fillna('unknown')
-        self.mass_tab['area'] = np.zeros(self.mass_tab.shape[0])
-        total = self.mass_tab['intens'].sum()
-
-        self.mass_tab['area%'] = self.mass_tab['intens'] * 100 / total
-        self.mass_tab = self.mass_tab.sort_values(by='area', ascending=False)
-
-
-def draw_ms2(ms2, intens):
-
-    for i, m in enumerate(ms2):
-        plt.plot([m, m], [0, intens[i]], '-', color='black')
-    plt.show()
-
 def main():
     path = r'C:\Users\Alex\Documents\LCMS\Oligos\NR_des_ms2.mgf'
     #path = r'C:\Users\Alex\Documents\LCMS\Oligos\NR_des_ms2_15cid.mgf'
@@ -909,73 +732,6 @@ def main1():
     plt.scatter(df['time'], df['mz'], color='blue', s=2)
     plt.show()
 
-def main2():
-    #name = 'NR_desalt'
-    #oligMS = oligoMSanalysys(rf'C:\Users\Alex\PycharmProjects\lcms_utils\data\TOPPAS_out\003-FileConverter-out\{name}.mzML')
-    name = 's2_iex_5ul'
-    name = 's1'
-    oligMS = oligoMSanalysys(rf'C:\Users\Alex\Documents\LCMS\Oligos\Nikolay\{name}.mzML', rt_left=300, neighbor_treshold=60)
-    oligMS.delta_mass = 4
-    oligMS.low_treshold = 1000
-    oligMS.scale_param = 4
-    oligMS.ms_analysis()
-    print(oligMS.mass_tab)
-
-    explainer = oligoMassExplainer('ATGCCACCCATATTTCTGGGAC', oligMS.mass_tab)
-    #explainer = oligoMassExplainer('T AAT CAG ACA AGG AAC TGA TTA', oligMS.mass_tab)
-
-    explainer.explain(mass_treshold=4)
-    print(explainer.molecular_weight)
-
-    #print(explainer.mass_tab)
-    massed_clust = explainer.filtrate_mass_tab(oligMS.massed_clust, treshold=0.5)
-    print(explainer.mass_tab)
-
-    massed_clust = explainer.labeling_mass_tab(massed_clust)
-    viewer = msvis.labeled_ms_map(massed_clust['rt'], massed_clust['mass'], massed_clust['intens'],
-                                  massed_clust['name'])
-    viewer.draw_map()
-
-
-    #print(explainer.mass_tab.keys())
-    #for i in list(set(explainer.mass_tab['type'])):
-    #    print([str(i)])
-
-    explainer.group_by_type()
-    print(explainer.gTab)
-    #explainer.gTab.to_csv(rf'data/{name}.csv')
-
-def main3():
-    name = 'NR_desalt'
-    #pepMS = peptideMSanalysys(r'C:\Users\Alex\Documents\LCMS\peptides\Dima\init_peptides\21w047-8_5ul.mzML')
-    pepMS = peptideMSanalysys(r'C:\Users\Alex\Documents\LCMS\peptides\Dima\init_peptides\161221\1238.mzML', rt_left=400, neighbor_treshold=70)
-    pepMS.delta_mass = 4
-    pepMS.dt_treshold = 30
-    pepMS.delta_rt = 20
-    pepMS.ms_analysis()
-    pepMS.mass_tab = pepMS.mass_tab.sort_values(by='area%', ascending=False)
-    print(pepMS.mass_tab)
-
-    explainer = peptideMassExplainer('ARHPHPHLSFMAIPPKKNQDKTEI', pepMS.mass_tab)
-    explainer.explain(mass_treshold=2)
-    explainer.group_by_type()
-    print(explainer.gTab)
-
-def lcms_peptide(name, seq):
-    #name = 'NR_desalt'
-    pepMS = peptideMSanalysys(name, rt_left=600)
-    pepMS.delta_mass = 3
-    pepMS.dt_treshold = 30
-    pepMS.ms_analysis()
-    pepMS.mass_tab = pepMS.mass_tab.sort_values(by='area%', ascending=False)
-    #print(pepMS.mass_tab)
-
-    explainer = peptideMassExplainer(seq, pepMS.mass_tab)
-    explainer.explain(mass_treshold=1)
-    explainer.group_by_type()
-    #print(explainer.gTab)
-    return explainer.gTab
-
 def test_deconv():
     name = 's10'
     #data, bkg = open_mzml(rf'C:\Users\Alex\Documents\LCMS\Oligos\Nikolay\{name}.mzML', rt_left=100)
@@ -1004,145 +760,7 @@ def test_deconv():
                                          data_['mass'], data_['intens'], rt_position=rt_pos)
     spec_viewer.draw_map(is_show=True)
 
-def test_deconv_peptide():
-    name = '21w047-8_5ul'
-    name = '2238'
-    path = rf'C:\Users\Alex\Documents\LCMS\peptides\Dima\init_peptides\{name}.mzML'
-    path = rf'C:\Users\Alex\Documents\LCMS\peptides\Dima\init_peptides\161221\{name}.mzML'
-
-    data, bkg = open_mzml(path, rt_left=500)
-    data = substract_bkg(data, bkg, treshold=4900)
-    for i in range(3):
-        map = get_intensity_map(data, low_treshold=1000, param=4)
-        data = find_inner_points(data, map, neighbor_treshold=60, param=4)
-
-    #data = data_rt_integration(data)
-
-    df = pd.DataFrame({'rt': data[:, 0], 'mz': data[:, 1], 'intens': data[:, 2]})
-
-    print(df.shape[0])
-
-    #deconv = mzSpecDeconv(df['mz'], df['intens'], is_positive=True)
-    #data_ = deconv.deconvolute()
-    #data_ = deconv.drop_by_charge(data_, max_charge=10)
-
-
-    #rt_pos = 1400
-
-    pepD = oligosDeconvolution(df['rt'], df['mz'], df['intens'], is_positive=True)
-    data_ = pepD.deconvolute()
-
-    max_mass = data_['mass'].loc[0]
-    df = data_[data_['mass'] >= max_mass - 0.8]
-    df = df[df['mass'] <= max_mass + 0.8]
-    max_mass -= 1000
-    rt_min = df['intens'].min()
-    rt_max = df['intens'].max()
-    data_ = pepD.drop_data(data_, max_mass, 0, rt_min, rt_max)
-
-    sequence = 'ARHPHPHLSFMAIPPKKNQDKTEI'
-    explainer = peptideMassExplainer(sequence, data_)
-    explainer.explain_2(mass_treshold=2)
-    explainer.mass_tab = explainer.drop_unknown(explainer.mass_tab)
-    explainer.explain_2(mass_treshold=2)
-    explainer.group_by_type_2()
-
-    print(explainer.mass_tab)
-    print(explainer.gTab)
-
-    #print(data_)
-
-    #
-    #df = df[df['rt'] == rt_pos]
-
-    #print(data_.shape[0], len(data[:, 0]))
-    #print(data_)
-
-    #spec_viewer = msvis.bokeh_ms_spectra([rt_pos for i in range(data_.shape[0])],
-    #                                     data_['mass'], data_['intens'], rt_position=rt_pos)
-    #spec_viewer.draw_map(is_show=True)
-
-    #spec_viewer = msvis.bokeh_ms_spectra([0 for i in range(df['mz'].shape[0])], df['mz'], df['intens'], rt_position=0)
-    #spec_viewer.draw_map(is_show=True)
-
-    #spec_viewer = msvis.bokeh_ms_spectra([0 for i in range(data_['mass'].shape[0])], data_['mass'], data_['intens'], rt_position=0)
-    #spec_viewer.draw_map(is_show=True)
-
-
-def peptide_ms_pipeline(file, seq):
-
-    data, bkg = open_mzml(file, rt_left=500)
-    data = substract_bkg(data, bkg, treshold=4900)
-    for i in range(3):
-        map = get_intensity_map(data, low_treshold=6000, param=4)
-        data = find_inner_points(data, map, neighbor_treshold=60, param=4)
-
-    df = pd.DataFrame({'rt': data[:, 0], 'mz': data[:, 1], 'intens': data[:, 2]})
-
-    pepD = oligosDeconvolution(df['rt'], df['mz'], df['intens'], is_positive=True)
-    data_ = pepD.deconvolute()
-
-    max_mass = data_['mass'].loc[0]
-    df = data_[data_['mass'] >= max_mass - 0.8]
-    df = df[df['mass'] <= max_mass + 0.8]
-    max_mass -= 1000
-    rt_min = df['intens'].min()
-    rt_max = df['intens'].max()
-    data_ = pepD.drop_data(data_, max_mass, 0, rt_min, rt_max)
-
-    out = {}
-
-    sequence = seq
-    explainer = peptideMassExplainer(sequence, data_)
-    explainer.explain_2(mass_treshold=2)
-    explainer.group_by_type_2()
-
-    for i in range(explainer.gTab.shape[0]):
-        out[explainer.gTab['type'].loc[i]] = explainer.gTab['purity%'].loc[i]
-        out[f'seq_{i + 1}'] = explainer.gTab['seq'].loc[i]
-
-    explainer.mass_tab = explainer.drop_unknown(explainer.mass_tab)
-    explainer.explain_2(mass_treshold=2)
-    explainer.group_by_type_2()
-
-    for i in range(explainer.gTab.shape[0]):
-        out[f"_{explainer.gTab['type'].loc[i]}_"] = explainer.gTab['purity%'].loc[i]
-
-    return out
-
-def test_pipeline():
-    seqs =  [
-            'ARHPHPHLSFMAIPPKKDQDKTEI',
-            'AHHPHPRPSFTAIPPKKTQDKTAI',
-            'AHHPHPRPSFLAIPPKKTQDKAVI',
-            'VHRPHLHPSFTAIPAKKIQDKTGI',
-            'ARHPHPRLSFMAIPPKKNQDKTDI',
-            'ERRPRPRPSFIAIPPKKTQDKTVN',
-            'VHYPTSHPQLKGMSLKKIPTKTNT',
-            'ARHPHPHLSFMAIPPKKNQDKTEI']
-
-    names = [f'313{i + 1}' for i in range(8)]
-    names.extend([f'513{i + 1}' for i in range(8)])
-    results = []
-    for name in names:
-        try:
-            path = rf'C:\Users\Alex\Documents\LCMS\peptides\Dima\init_peptides\241221\{name}.mzML'
-            number = int(name[len(name) - 1])
-            seq = seqs[number - 1]
-            out = peptide_ms_pipeline(path, seq)
-            out['id'] = name
-            results.append(out)
-            print(out)
-        except Exception:
-            print(f'Error: {name} {Exception}')
-
-    df = pd.DataFrame(results)
-
-    df.to_csv('test_results.csv')
-
 
 if __name__=='__main__':
-    #main2()
-    #test_deconv_peptide()
-    #test_pipeline()
+
     test_deconv()
