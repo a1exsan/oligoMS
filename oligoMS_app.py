@@ -137,5 +137,7 @@ with col1:
             st.write(explainer.mass_tab)
 
             st.write('Table of identified Groups:')
-            st.write(explainer.gTab)
+            #st.write(explainer.gTab)
+            st.dataframe(explainer.gTab)
+
 
