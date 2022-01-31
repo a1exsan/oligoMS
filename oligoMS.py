@@ -1,7 +1,7 @@
 import numpy as np
 from tqdm import tqdm
 import pandas as pd
-import oligoMass as omass
+from oligoMass import dna as omass
 import pickle
 import msvis
 import pymzml
