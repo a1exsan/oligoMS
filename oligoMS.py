@@ -280,15 +280,18 @@ class oligoMassExplainer(MassExplainer):
         self.hypo_tab = []
 
         d = {}
-        d['name'], d['seq'], d['deltaM'], d['type'], d['cf'] = 'main', self.seq, 0., 'main', 1
+        d['name'], d['seq'], d['deltaM'], d['type'], d['cf'], d['thold'] = \
+            'main', self.seq, 0., 'main', 1, 2
         self.hypo_tab.append(d)
 
         d = {}
-        d['name'], d['seq'], d['deltaM'], d['type'], d['cf'] = 'main +Na', self.seq, 23, 'main', 1
+        d['name'], d['seq'], d['deltaM'], d['type'], d['cf'], d['thold'] = \
+            'main +Na', self.seq, 23, 'main', 1, 3
         self.hypo_tab.append(d)
 
         d = {}
-        d['name'], d['seq'], d['deltaM'], d['type'], d['cf'] = 'main Dimer', self.seq, 0., 'main', 2
+        d['name'], d['seq'], d['deltaM'], d['type'], d['cf'], d['thold'] = \
+            'main Dimer', self.seq, 0., 'main', 2, 2
         self.hypo_tab.append(d)
 
         dna = omass.oligoSeq(self.seq)
@@ -297,37 +300,43 @@ class oligoMassExplainer(MassExplainer):
             d = {}
             dna = omass.oligoSeq(self.seq)
             seq = dna.seq_end_cut(self.seq, cut_number=i, end_type="5'")
-            d['name'], d['seq'], d['deltaM'], d['type'], d['cf'] = f'5 end n - {i}', seq, 0., f'5 end n - {i}', 1
+            d['name'], d['seq'], d['deltaM'], d['type'], d['cf'], d['thold'] = \
+                f'5 end n - {i}', seq, 0., f'5 end n - {i}', 1, 2
             self.hypo_tab.append(d)
 
             d = {}
             dna = omass.oligoSeq(self.seq)
             seq = dna.seq_end_cut(self.seq, cut_number=i, end_type="5'")
-            d['name'], d['seq'], d['deltaM'], d['type'], d['cf'] = f'5 end n - {i} Dimer', seq, 0., f'5 end n - {i}', 2
+            d['name'], d['seq'], d['deltaM'], d['type'], d['cf'], d['thold'] = \
+                f'5 end n - {i} Dimer', seq, 0., f'5 end n - {i}', 2, 2
             self.hypo_tab.append(d)
 
             d = {}
             dna = omass.oligoSeq(self.seq)
             seq = dna.seq_end_cut(self.seq, cut_number=i, end_type="5'")
-            d['name'], d['seq'], d['deltaM'], d['type'], d['cf'] = f'5 end n - {i} +Na', seq, 23., f'5 end n - {i}', 1
+            d['name'], d['seq'], d['deltaM'], d['type'], d['cf'], d['thold'] = \
+                f'5 end n - {i} +Na', seq, 23., f'5 end n - {i}', 1, 3
             self.hypo_tab.append(d)
 
             d = {}
             dna = omass.oligoSeq(self.seq)
             seq = dna.seq_end_cut(self.seq, cut_number=i, end_type="3'")
-            d['name'], d['seq'], d['deltaM'], d['type'], d['cf'] = f'3 end n - {i}', seq, 0., f'3 end n - {i}', 1
+            d['name'], d['seq'], d['deltaM'], d['type'], d['cf'], d['thold'] = \
+                f'3 end n - {i}', seq, 0., f'3 end n - {i}', 1, 2
             self.hypo_tab.append(d)
 
             d = {}
             dna = omass.oligoSeq(self.seq)
             seq = dna.seq_end_cut(self.seq, cut_number=i, end_type="3'")
-            d['name'], d['seq'], d['deltaM'], d['type'], d['cf'] = f'3 end n - {i} Dimer', seq, 0., f'3 end n - {i}', 2
+            d['name'], d['seq'], d['deltaM'], d['type'], d['cf'], d['thold'] = \
+                f'3 end n - {i} Dimer', seq, 0., f'3 end n - {i}', 2, 2
             self.hypo_tab.append(d)
 
             d = {}
             dna = omass.oligoSeq(self.seq)
             seq = dna.seq_end_cut(self.seq, cut_number=i, end_type="3'")
-            d['name'], d['seq'], d['deltaM'], d['type'], d['cf'] = f'3 end n - {i} +Na', seq, 23., f'3 end n - {i}', 1
+            d['name'], d['seq'], d['deltaM'], d['type'], d['cf'], d['thold'] = \
+                f'3 end n - {i} +Na', seq, 23., f'3 end n - {i}', 1, 3
             self.hypo_tab.append(d)
 
     def filtrate_mass_tab(self, massed_clust, treshold=0.5):
@@ -361,11 +370,123 @@ class oligoMassExplainer(MassExplainer):
     def drop_artifacts(self):
         df = self.mass_tab[self.mass_tab['name'] != 'unknown']
         for name in list(set(df['name'])):
-            df = self.mass_tab[self.mass_tab['name'] == name]
-            max_mass = df['mass'].max() - 1000
-            rt_min = df['rt'].min()
-            rt_max = df['rt'].max()
-            self.mass_tab = oligosDeconvolution.drop_data(self.mass_tab, max_mass, 0, rt_min, rt_max)
+            if name.find('Dimer') == -1:
+                df = self.mass_tab[self.mass_tab['name'] == name]
+                max_mass = df['mass'].max() - 1000
+                rt_min = df['rt'].min()
+                rt_max = df['rt'].max()
+                self.mass_tab = oligosDeconvolution.drop_data(self.mass_tab, max_mass, 0, rt_min, rt_max)
+
+class oligoMassExplainer2(oligoMassExplainer):
+    def __init__(self, seq, mass_tab):
+        super().__init__(seq, mass_tab)
+
+    def generate_hypothesis(self):
+        self.hypo_tab = []
+
+        d = {}
+        d['name'], d['seq'], d['deltaM'], d['type'], d['cf'], d['thold'] = \
+            'main', self.seq, 0., 'main', 1, 2
+        self.hypo_tab.append(d)
+
+        d = {}
+        d['name'], d['seq'], d['deltaM'], d['type'], d['cf'], d['thold'] = \
+            'main +Na', self.seq, 23, 'main', 1, 3
+        self.hypo_tab.append(d)
+
+        d = {}
+        d['name'], d['seq'], d['deltaM'], d['type'], d['cf'], d['thold'] = \
+            'main Dimer', self.seq, 0., 'main', 2, 2
+        self.hypo_tab.append(d)
+
+        d = {}
+        d['name'], d['seq'], d['deltaM'], d['type'], d['cf'], d['thold'] = \
+            'like main', self.seq, 0., 'like main', 1, 150
+        self.hypo_tab.append(d)
+
+        dna = omass.oligoSeq(self.seq)
+
+        for i in range(1, len(dna.string2seq(self.seq)) - 2):
+            d = {}
+            dna = omass.oligoSeq(self.seq)
+            seq = dna.seq_end_cut(self.seq, cut_number=i, end_type="5'")
+            d['name'], d['seq'], d['deltaM'], d['type'], d['cf'], d['thold'] = \
+                f'5 end n - {i}', seq, 0., f'5 end n - {i}', 1, 2
+            self.hypo_tab.append(d)
+
+            d = {}
+            dna = omass.oligoSeq(self.seq)
+            seq = dna.seq_end_cut(self.seq, cut_number=i, end_type="5'")
+            d['name'], d['seq'], d['deltaM'], d['type'], d['cf'], d['thold'] = \
+                f'like 5 end n - {i}', seq, 0., f'like 5 end n - {i}', 1, 150
+            self.hypo_tab.append(d)
+
+            d = {}
+            dna = omass.oligoSeq(self.seq)
+            seq = dna.seq_end_cut(self.seq, cut_number=i, end_type="5'")
+            d['name'], d['seq'], d['deltaM'], d['type'], d['cf'], d['thold'] = \
+                f'5 end n - {i} +Na', seq, 23., f'5 end n - {i}', 1, 3
+            self.hypo_tab.append(d)
+
+            d = {}
+            dna = omass.oligoSeq(self.seq)
+            seq = dna.seq_end_cut(self.seq, cut_number=i, end_type="3'")
+            d['name'], d['seq'], d['deltaM'], d['type'], d['cf'], d['thold'] = \
+                f'3 end n - {i}', seq, 0., f'3 end n - {i}', 1, 2
+            self.hypo_tab.append(d)
+
+            d = {}
+            dna = omass.oligoSeq(self.seq)
+            seq = dna.seq_end_cut(self.seq, cut_number=i, end_type="3'")
+            d['name'], d['seq'], d['deltaM'], d['type'], d['cf'], d['thold'] = \
+                f'like 3 end n - {i}', seq, 0., f'like 3 end n - {i}', 1, 150
+            self.hypo_tab.append(d)
+
+            d = {}
+            dna = omass.oligoSeq(self.seq)
+            seq = dna.seq_end_cut(self.seq, cut_number=i, end_type="3'")
+            d['name'], d['seq'], d['deltaM'], d['type'], d['cf'], d['thold'] = \
+                f'3 end n - {i} +Na', seq, 23., f'3 end n - {i}', 1, 3
+            self.hypo_tab.append(d)
+
+    def explain_2(self, mass_treshold=3):
+
+        massTab = list(self.mass_tab.T.to_dict().values())
+        for h in self.hypo_tab:
+            if h['name'].find('like') == -1:
+                dna = omass.oligoSeq(h['seq'])
+                molecular_weight = dna.getMolMass()
+                for i, m in enumerate(massTab):
+                    mass_treshold = h['thold']
+                    if abs(m['mass'] - molecular_weight * h['cf'] - h['deltaM']) <= mass_treshold:
+                        massTab[i]['type'] = h['type']
+                        massTab[i]['name'] = h['name']
+                        massTab[i]['seq'] = h['seq']
+
+        self.mass_tab = pd.DataFrame(massTab)
+        self.mass_tab = self.mass_tab.fillna('unknown')
+
+        massTab = list(self.mass_tab.T.to_dict().values())
+        for h in self.hypo_tab:
+            if h['name'].find('like') != -1:
+                dna = omass.oligoSeq(h['seq'])
+                molecular_weight = dna.getMolMass()
+                for i, m in enumerate(massTab):
+                    if m['name'] == 'unknown':
+                        #print(h['seq'], h['name'])
+                        mass_treshold = h['thold']
+                        if abs(m['mass'] - molecular_weight * h['cf'] - h['deltaM']) <= mass_treshold:
+                            massTab[i]['type'] = h['type']
+                            massTab[i]['name'] = h['name']
+                            massTab[i]['seq'] = h['seq']
+
+        self.mass_tab = pd.DataFrame(massTab)
+
+        self.mass_tab['area'] = np.zeros(self.mass_tab.shape[0])
+        total = self.mass_tab['intens'].sum()
+
+        self.mass_tab['area%'] = self.mass_tab['intens'] * 100 / total
+        self.mass_tab = self.mass_tab.sort_values(by='area', ascending=False)
 
 
 

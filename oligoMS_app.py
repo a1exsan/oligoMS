@@ -74,7 +74,7 @@ with col1:
 
         if is_identify and sequence != '':
 
-            explainer = lcms.oligoMassExplainer(sequence, deconv_data)
+            explainer = lcms.oligoMassExplainer2(sequence, deconv_data)
             explainer.explain_2(mass_treshold=2)
             explainer.group_by_type_2()
 
@@ -87,7 +87,7 @@ with col1:
         if is_drop_unk and is_identify and sequence != '':
             deconv_data = explainer.drop_unknown(explainer.mass_tab)
 
-            explainer = lcms.oligoMassExplainer(sequence, deconv_data)
+            explainer = lcms.oligoMassExplainer2(sequence, deconv_data)
             explainer.explain_2(mass_treshold=2)
             explainer.group_by_type_2()
 
@@ -101,7 +101,6 @@ with col1:
         viewer.draw_map(is_show=False)
         st.bokeh_chart(viewer.plot, use_container_width=True)
 
-        #spec_viewer = msvis.bokeh_ms_spectra(data[:, 0], data[:, 1], data[:, 2], rt_position=rt_pos)
         if is_deconv:
             spec_viewer = msvis.bokeh_ms_spectra(deconv_data['rt'], deconv_data['mono_mass'],
                                                  deconv_data['intens'], rt_position=rt_pos)
@@ -140,4 +139,9 @@ with col1:
             #st.write(explainer.gTab)
             st.dataframe(explainer.gTab)
 
+            st.download_button('Download results as csv', explainer.gTab.to_csv().encode('utf-8'),
+                               f"{uploaded_file.name}_results.csv",
+                               "text/csv",
+                               key='download-csv'
+                               )
 
