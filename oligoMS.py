@@ -2,6 +2,7 @@ import numpy as np
 from tqdm import tqdm
 import pandas as pd
 from oligoMass import dna as omass
+from oligoMass import molmassOligo as mmo
 import pickle
 import msvis
 import pymzml
@@ -190,8 +191,10 @@ class MassExplainer():
         self.mass_tab = mass_tab
         self.seq = seq
         self.generate_hypothesis()
-        dna = omass.oligoSeq(seq)
-        self.molecular_weight = dna.getMolMass()
+        #dna = omass.oligoSeq(seq)
+        #self.molecular_weight = dna.getMolMass()
+        dna = mmo.oligoNASequence(seq)
+        self.molecular_weight = dna.getAvgMass()
 
     def generate_hypothesis(self):
         self.hypo_tab = []
@@ -224,8 +227,10 @@ class MassExplainer():
 
         massTab = list(self.mass_tab.T.to_dict().values())
         for h in self.hypo_tab:
-            dna = omass.oligoSeq(h['seq'])
-            molecular_weight = dna.getMolMass()
+            #dna = omass.oligoSeq(h['seq'])
+            dna = mmo.oligoNASequence(h['seq'])
+            #molecular_weight = dna.getMolMass()
+            molecular_weight = dna.getAvgMass()
             for i, m in enumerate(massTab):
                 if abs(m['mass'] - molecular_weight * h['cf'] - h['deltaM']) <= mass_treshold:
                     massTab[i]['type'] = h['type']
@@ -240,8 +245,10 @@ class MassExplainer():
 
         massTab = list(self.mass_tab.T.to_dict().values())
         for h in self.hypo_tab:
-            dna = omass.oligoSeq(h['seq'])
-            molecular_weight = dna.getMolMass()
+            #dna = omass.oligoSeq(h['seq'])
+            dna = mmo.oligoNASequence(h['seq'])
+            #molecular_weight = dna.getMolMass()
+            molecular_weight = dna.getAvgMass()
             for i, m in enumerate(massTab):
                 if abs(m['mass'] - molecular_weight * h['cf'] - h['deltaM']) <= mass_treshold:
                     massTab[i]['type'] = h['type']
@@ -294,47 +301,50 @@ class oligoMassExplainer(MassExplainer):
             'main Dimer', self.seq, 0., 'main', 2, 2
         self.hypo_tab.append(d)
 
-        dna = omass.oligoSeq(self.seq)
+        #dna = omass.oligoSeq(self.seq)
+        dna = mmo.oligoNASequence(self.seq)
 
-        for i in range(1, len(dna.string2seq(self.seq)) - 2):
+        for i in range(1, dna.size()):
             d = {}
-            dna = omass.oligoSeq(self.seq)
-            seq = dna.seq_end_cut(self.seq, cut_number=i, end_type="5'")
+            #dna = omass.oligoSeq(self.seq)
+            #seq = dna.seq_end_cut(self.seq, cut_number=i, end_type="5'")
+            seq = dna.getPrefix(i).sequence
             d['name'], d['seq'], d['deltaM'], d['type'], d['cf'], d['thold'] = \
-                f'5 end n - {i}', seq, 0., f'5 end n - {i}', 1, 2
+                f'5 end n - {dna.size() - i}', seq, 0., f'5 end n - {dna.size() - i}', 1, 2
             self.hypo_tab.append(d)
 
             d = {}
-            dna = omass.oligoSeq(self.seq)
-            seq = dna.seq_end_cut(self.seq, cut_number=i, end_type="5'")
+            #dna = omass.oligoSeq(self.seq)
+            #seq = dna.seq_end_cut(self.seq, cut_number=i, end_type="5'")
             d['name'], d['seq'], d['deltaM'], d['type'], d['cf'], d['thold'] = \
-                f'5 end n - {i} Dimer', seq, 0., f'5 end n - {i}', 2, 2
+                f'5 end n - {dna.size() - i} Dimer', seq, 0., f'5 end n - {dna.size() - i}', 2, 2
             self.hypo_tab.append(d)
 
             d = {}
-            dna = omass.oligoSeq(self.seq)
-            seq = dna.seq_end_cut(self.seq, cut_number=i, end_type="5'")
+            #dna = omass.oligoSeq(self.seq)
+            #seq = dna.seq_end_cut(self.seq, cut_number=i, end_type="5'")
             d['name'], d['seq'], d['deltaM'], d['type'], d['cf'], d['thold'] = \
-                f'5 end n - {i} +Na', seq, 23., f'5 end n - {i}', 1, 3
+                f'5 end n - {dna.size() - i} +Na', seq, 23., f'5 end n - {dna.size() - i}', 1, 3
             self.hypo_tab.append(d)
 
             d = {}
-            dna = omass.oligoSeq(self.seq)
-            seq = dna.seq_end_cut(self.seq, cut_number=i, end_type="3'")
+            #dna = omass.oligoSeq(self.seq)
+            #seq = dna.seq_end_cut(self.seq, cut_number=i, end_type="3'")
+            seq = dna.getSuffix(i).sequence
             d['name'], d['seq'], d['deltaM'], d['type'], d['cf'], d['thold'] = \
                 f'3 end n - {i}', seq, 0., f'3 end n - {i}', 1, 2
             self.hypo_tab.append(d)
 
             d = {}
-            dna = omass.oligoSeq(self.seq)
-            seq = dna.seq_end_cut(self.seq, cut_number=i, end_type="3'")
+            #dna = omass.oligoSeq(self.seq)
+            #seq = dna.seq_end_cut(self.seq, cut_number=i, end_type="3'")
             d['name'], d['seq'], d['deltaM'], d['type'], d['cf'], d['thold'] = \
                 f'3 end n - {i} Dimer', seq, 0., f'3 end n - {i}', 2, 2
             self.hypo_tab.append(d)
 
             d = {}
-            dna = omass.oligoSeq(self.seq)
-            seq = dna.seq_end_cut(self.seq, cut_number=i, end_type="3'")
+            #dna = omass.oligoSeq(self.seq)
+            #seq = dna.seq_end_cut(self.seq, cut_number=i, end_type="3'")
             d['name'], d['seq'], d['deltaM'], d['type'], d['cf'], d['thold'] = \
                 f'3 end n - {i} +Na', seq, 23., f'3 end n - {i}', 1, 3
             self.hypo_tab.append(d)
@@ -404,47 +414,51 @@ class oligoMassExplainer2(oligoMassExplainer):
             'like main', self.seq, 0., 'like main', 1, 150
         self.hypo_tab.append(d)
 
-        dna = omass.oligoSeq(self.seq)
+        #dna = omass.oligoSeq(self.seq)
+        dna = mmo.oligoNASequence(self.seq)
 
-        for i in range(1, len(dna.string2seq(self.seq)) - 2):
+        #for i in range(1, len(dna.string2seq(self.seq)) - 2):
+        for i in range(1, dna.size()):
             d = {}
-            dna = omass.oligoSeq(self.seq)
-            seq = dna.seq_end_cut(self.seq, cut_number=i, end_type="5'")
+            #dna = omass.oligoSeq(self.seq)
+            #seq = dna.seq_end_cut(self.seq, cut_number=i, end_type="5'")
+            seq = dna.getPrefix(i).sequence
             d['name'], d['seq'], d['deltaM'], d['type'], d['cf'], d['thold'] = \
-                f'5 end n - {i}', seq, 0., f'5 end n - {i}', 1, 2
+                f'5 end n - {dna.size() - i}', seq, 0., f'5 end n - {dna.size() - i}', 1, 2
             self.hypo_tab.append(d)
 
             d = {}
-            dna = omass.oligoSeq(self.seq)
-            seq = dna.seq_end_cut(self.seq, cut_number=i, end_type="5'")
+            #dna = omass.oligoSeq(self.seq)
+            #seq = dna.seq_end_cut(self.seq, cut_number=i, end_type="5'")
             d['name'], d['seq'], d['deltaM'], d['type'], d['cf'], d['thold'] = \
-                f'like 5 end n - {i}', seq, 0., f'like 5 end n - {i}', 1, 150
+                f'like 5 end n - {dna.size() - i}', seq, 0., f'like 5 end n - {dna.size() - i}', 1, 150
             self.hypo_tab.append(d)
 
             d = {}
-            dna = omass.oligoSeq(self.seq)
-            seq = dna.seq_end_cut(self.seq, cut_number=i, end_type="5'")
+            #dna = omass.oligoSeq(self.seq)
+            #seq = dna.seq_end_cut(self.seq, cut_number=i, end_type="5'")
             d['name'], d['seq'], d['deltaM'], d['type'], d['cf'], d['thold'] = \
-                f'5 end n - {i} +Na', seq, 23., f'5 end n - {i}', 1, 3
+                f'5 end n - {dna.size() - i} +Na', seq, 23., f'5 end n - {dna.size() - i}', 1, 3
             self.hypo_tab.append(d)
 
             d = {}
-            dna = omass.oligoSeq(self.seq)
-            seq = dna.seq_end_cut(self.seq, cut_number=i, end_type="3'")
+            #dna = omass.oligoSeq(self.seq)
+            #seq = dna.seq_end_cut(self.seq, cut_number=i, end_type="3'")
+            seq = dna.getSuffix(i).sequence
             d['name'], d['seq'], d['deltaM'], d['type'], d['cf'], d['thold'] = \
                 f'3 end n - {i}', seq, 0., f'3 end n - {i}', 1, 2
             self.hypo_tab.append(d)
 
             d = {}
-            dna = omass.oligoSeq(self.seq)
-            seq = dna.seq_end_cut(self.seq, cut_number=i, end_type="3'")
+            #dna = omass.oligoSeq(self.seq)
+            #seq = dna.seq_end_cut(self.seq, cut_number=i, end_type="3'")
             d['name'], d['seq'], d['deltaM'], d['type'], d['cf'], d['thold'] = \
                 f'like 3 end n - {i}', seq, 0., f'like 3 end n - {i}', 1, 150
             self.hypo_tab.append(d)
 
             d = {}
-            dna = omass.oligoSeq(self.seq)
-            seq = dna.seq_end_cut(self.seq, cut_number=i, end_type="3'")
+            #dna = omass.oligoSeq(self.seq)
+            #seq = dna.seq_end_cut(self.seq, cut_number=i, end_type="3'")
             d['name'], d['seq'], d['deltaM'], d['type'], d['cf'], d['thold'] = \
                 f'3 end n - {i} +Na', seq, 23., f'3 end n - {i}', 1, 3
             self.hypo_tab.append(d)
@@ -454,8 +468,10 @@ class oligoMassExplainer2(oligoMassExplainer):
         massTab = list(self.mass_tab.T.to_dict().values())
         for h in self.hypo_tab:
             if h['name'].find('like') == -1:
-                dna = omass.oligoSeq(h['seq'])
-                molecular_weight = dna.getMolMass()
+                #dna = omass.oligoSeq(h['seq'])
+                #molecular_weight = dna.getMolMass()
+                dna = mmo.oligoNASequence(h['seq'])
+                molecular_weight = dna.getAvgMass()
                 for i, m in enumerate(massTab):
                     mass_treshold = h['thold']
                     if abs(m['mass'] - molecular_weight * h['cf'] - h['deltaM']) <= mass_treshold:
@@ -469,8 +485,10 @@ class oligoMassExplainer2(oligoMassExplainer):
         massTab = list(self.mass_tab.T.to_dict().values())
         for h in self.hypo_tab:
             if h['name'].find('like') != -1:
-                dna = omass.oligoSeq(h['seq'])
-                molecular_weight = dna.getMolMass()
+                #dna = omass.oligoSeq(h['seq'])
+                #molecular_weight = dna.getMolMass()
+                dna = mmo.oligoNASequence(h['seq'])
+                molecular_weight = dna.getAvgMass()
                 for i, m in enumerate(massTab):
                     if m['name'] == 'unknown':
                         #print(h['seq'], h['name'])
