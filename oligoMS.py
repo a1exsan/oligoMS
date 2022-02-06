@@ -357,13 +357,13 @@ class oligoMassExplainer(MassExplainer):
                 f'3 end n - {i} +Na', seq, 23., f'3 end n - {i}', 1, 3
             self.hypo_tab.append(d)
 
-    def filtrate_mass_tab(self, massed_clust, treshold=0.5):
+    def filtrate_mass_tab(self, massed_clust, treshold=0.5, mass_thold=500):
         ctrl = True
         if ctrl:
             self.mass_tab['rt_ctrl'] = np.ones(self.mass_tab.shape[0])
             mass_main = self.mass_tab[self.mass_tab['name'] == 'main']['mass'].values[0]
             rt_main = self.mass_tab[self.mass_tab['name'] == 'main']['rt'].values[0]
-            mass_main -= 1000
+            mass_main -= mass_thold
             rt_main -= 20
             df = self.mass_tab[self.mass_tab['mass'] <= mass_main]
             df = df[df['rt'] >= rt_main]
@@ -385,12 +385,12 @@ class oligoMassExplainer(MassExplainer):
                 massed_clust.loc[massed_clust['class'] == clss, 'name'] = name
         return massed_clust
 
-    def drop_artifacts(self):
+    def drop_artifacts(self, mass_thold=500):
         df = self.mass_tab[self.mass_tab['name'] != 'unknown']
         for name in list(set(df['name'])):
             if name.find('Dimer') == -1:
                 df = self.mass_tab[self.mass_tab['name'] == name]
-                max_mass = df['mass'].max() - 1000
+                max_mass = df['mass'].max() - mass_thold
                 rt_min = df['rt'].min()
                 rt_max = df['rt'].max()
                 self.mass_tab = oligosDeconvolution.drop_data(self.mass_tab, max_mass, 0, rt_min, rt_max)

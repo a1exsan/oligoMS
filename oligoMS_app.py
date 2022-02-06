@@ -50,6 +50,8 @@ with col2:
 
     is_droped = st.checkbox('drop failed points')
 
+    mass_treshold = st.select_slider('select background treshold', options=range(200, 1010, 10), value=500)
+
     is_drop_unk = st.checkbox('Drop unknown')
 
 with col1:
@@ -79,7 +81,7 @@ with col1:
             explainer.group_by_type_2()
 
             if is_droped:
-                explainer.drop_artifacts()
+                explainer.drop_artifacts(mass_thold=mass_treshold)
                 explainer.explain_2(mass_treshold=2)
                 explainer.group_by_type_2()
 
