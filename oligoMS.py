@@ -102,7 +102,7 @@ class mzSpecDeconv():
     def __compute_mass(self, data):
 
         classes = list(set(data['class']))
-        data['charge'] = np.ones(data['mz'].shape[0])
+        data['charge'] = np.zeros(data['mz'].shape[0])
         data['mass'] = np.ones(data['mz'].shape[0])
 
         if self.is_positive:
@@ -112,9 +112,16 @@ class mzSpecDeconv():
 
         for cl in classes:
             df = data[data['class'] == cl]
-            if df.shape[0] > 1:
+            if df.shape[0] > 3:
                 df = df.sort_values(by='mz', ascending=False)
-                charge = round(1 / abs(df['mz'].values[0] - df['mz'].values[1]), 0)
+                #charge = round(1 / abs(df['mz'].values[0] - df['mz'].values[1]), 0)
+
+                diff = pd.DataFrame(df['mz'])
+                diff['diff'] = df['mz'].diff(periods=1)
+                diff.dropna(inplace=True)
+                diff = diff[diff['diff'] != 0]
+                diff['charge'] = [abs(round(1/z, 0)) for z in diff['diff']]
+                charge = diff['charge'].value_counts().idxmax()
 
                 r_int = df['intens'] / df['intens'].sum()
                 masses = df['mz'] * charge + sign * charge
@@ -124,6 +131,7 @@ class mzSpecDeconv():
                 data.loc[data['class'] == cl, 'mass'] = avg_mass
 
         data['mono_mass'] = data['mz'] * data['charge'] + sign * data['charge']
+        data = data[data['charge'] > 0]
 
         return data
 
