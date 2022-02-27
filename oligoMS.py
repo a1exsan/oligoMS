@@ -419,7 +419,17 @@ class oligoMassExplainer2(oligoMassExplainer):
 
         d = {}
         d['name'], d['seq'], d['deltaM'], d['type'], d['cf'], d['thold'] = \
-            'like main', self.seq, 0., 'like main', 1, 150
+            'like main', self.seq, 0., 'like main', 1, 100
+        self.hypo_tab.append(d)
+
+        d = {}
+        d['name'], d['seq'], d['deltaM'], d['type'], d['cf'], d['thold'] = \
+            'aPurin_A', self.seq, 135., 'aPurin_A', 1, 7
+        self.hypo_tab.append(d)
+
+        d = {}
+        d['name'], d['seq'], d['deltaM'], d['type'], d['cf'], d['thold'] = \
+            'aPurin_G', self.seq, 150., 'aPurin_G', 1, 7
         self.hypo_tab.append(d)
 
         #dna = omass.oligoSeq(self.seq)
@@ -461,7 +471,7 @@ class oligoMassExplainer2(oligoMassExplainer):
             #dna = omass.oligoSeq(self.seq)
             #seq = dna.seq_end_cut(self.seq, cut_number=i, end_type="3'")
             d['name'], d['seq'], d['deltaM'], d['type'], d['cf'], d['thold'] = \
-                f'like 3 end n - {i}', seq, 0., f'like 3 end n - {i}', 1, 150
+                f'like 3 end n - {i}', seq, 0., f'like 3 end n - {i}', 1, 100
             self.hypo_tab.append(d)
 
             d = {}
@@ -480,12 +490,20 @@ class oligoMassExplainer2(oligoMassExplainer):
                 #molecular_weight = dna.getMolMass()
                 dna = mmo.oligoNASequence(h['seq'])
                 molecular_weight = dna.getAvgMass()
-                for i, m in enumerate(massTab):
-                    mass_treshold = h['thold']
-                    if abs(m['mass'] - molecular_weight * h['cf'] - h['deltaM']) <= mass_treshold:
-                        massTab[i]['type'] = h['type']
-                        massTab[i]['name'] = h['name']
-                        massTab[i]['seq'] = h['seq']
+                mass_treshold = h['thold']
+                if h['name'].find('aPurin') == -1:
+                    for i, m in enumerate(massTab):
+                        if abs(m['mass'] - molecular_weight * h['cf'] - h['deltaM']) <= mass_treshold:
+                            massTab[i]['type'] = h['type']
+                            massTab[i]['name'] = h['name']
+                            massTab[i]['seq'] = h['seq']
+                else:
+                    for i, m in enumerate(massTab):
+                        diff = molecular_weight * h['cf'] - h['deltaM']
+                        if abs(m['mass'] - diff) <= mass_treshold and diff > 0:
+                            massTab[i]['type'] = h['type']
+                            massTab[i]['name'] = h['name']
+                            massTab[i]['seq'] = h['seq']
 
         self.mass_tab = pd.DataFrame(massTab)
         self.mass_tab = self.mass_tab.fillna('unknown')
@@ -501,7 +519,8 @@ class oligoMassExplainer2(oligoMassExplainer):
                     if m['name'] == 'unknown':
                         #print(h['seq'], h['name'])
                         mass_treshold = h['thold']
-                        if abs(m['mass'] - molecular_weight * h['cf'] - h['deltaM']) <= mass_treshold:
+                        diff = m['mass'] - molecular_weight * h['cf'] - h['deltaM']
+                        if abs(diff) <= mass_treshold:
                             massTab[i]['type'] = h['type']
                             massTab[i]['name'] = h['name']
                             massTab[i]['seq'] = h['seq']

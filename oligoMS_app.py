@@ -31,7 +31,7 @@ with col2:
 
     polish_bkg = st.checkbox('polish background')
 
-    rt_interval = st.select_slider('Retention time interval', options=range(100, 2010, 10), value=(100, 1500))
+    rt_interval = st.select_slider('Retention time interval', options=range(0, 2010, 10), value=(100, 1500))
 
     bkg_treshold = st.select_slider('select background treshold', options=range(100, 6000, 100), value=500)
 
@@ -59,7 +59,7 @@ with col1:
         with open(f'data/temp/{uploaded_file.name}', 'wb') as f:
             f.write(uploaded_file.getvalue())
 
-        rt_left = 500
+        rt_left = rt_interval[0]
         data, bkg = upload_mzML_data(f'data/temp/{uploaded_file.name}', rt_left=rt_left)
 
         if clear_bkg:
