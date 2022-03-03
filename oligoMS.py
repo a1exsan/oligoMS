@@ -437,6 +437,15 @@ class oligoMassExplainer2(oligoMassExplainer):
 
         #for i in range(1, len(dna.string2seq(self.seq)) - 2):
         for i in range(1, dna.size()):
+
+            if i > 1:
+                d = {}
+                seq = dna.getDeletion(i)
+                d['name'], d['seq'], d['deltaM'], d['type'], d['cf'], d['thold'] = \
+                    f'Del - {i}', seq, 0., f'Del - {i}', 1, 2
+                self.hypo_tab.append(d)
+
+
             d = {}
             #dna = omass.oligoSeq(self.seq)
             #seq = dna.seq_end_cut(self.seq, cut_number=i, end_type="5'")
