@@ -225,7 +225,7 @@ class MassExplainer():
     def group_by_type_2(self):
         self.gTab = self.mass_tab.groupby('type').agg(
             {'mass':'first', 'rt':'mean',
-            'charge':'max', 'class':'max', 'area%':'sum',
+            'charge':'max', 'class':'max', 'area%':'sum', 'intens': 'sum',
             'type':'first', 'name':'first', 'seq':'first'})
 
         self.gTab['purity%'] = self.gTab['area%']
