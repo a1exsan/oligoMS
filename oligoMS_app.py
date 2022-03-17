@@ -19,8 +19,8 @@ def deconvolution(data, is_positive):
     return deconv.deconvolute(), deconv
 
 
-#is_positive_mode = st.sidebar.checkbox('Positive mode')
-is_positive_mode = False
+is_positive_mode = st.sidebar.checkbox('Positive mode')
+#is_positive_mode = False
 sequence = st.sidebar.text_area('Enter sequence', '')
 uploaded_file = st.sidebar.file_uploader("Choose a file (*.mzML)")
 
@@ -33,7 +33,10 @@ with col2:
 
     rt_interval = st.select_slider('Retention time interval', options=range(0, 2010, 10), value=(100, 1500))
 
-    bkg_treshold = st.select_slider('select background treshold', options=range(100, 6000, 100), value=500)
+    if is_positive_mode:
+        bkg_treshold = st.select_slider('select background treshold', options=range(100, 6000, 100), value=5000)
+    else:
+        bkg_treshold = st.select_slider('select background treshold', options=range(100, 6000, 100), value=500)
 
     neighbor_treshold = st.select_slider('select neighbor treshold', options=range(10, 100, 5), value=60)
 
@@ -43,6 +46,11 @@ with col2:
     else:
         low_intens_treshold = st.select_slider('low intensity treshold', options=range(1000, 100000, 1000), value=6000)
         st.write('low intensity treshold', low_intens_treshold)
+
+    if is_positive_mode:
+        bkg_polish_count = st.select_slider('background polish repeats', options=range(1, 7, 1), value=1)
+    else:
+        bkg_polish_count = st.select_slider('background polish repeats', options=range(1, 7, 1), value=3)
 
     is_deconv = st.checkbox('Deconvolution')
 
@@ -66,7 +74,7 @@ with col1:
             data = lcms.substract_bkg(data, bkg, treshold=bkg_treshold)
 
         if polish_bkg:
-            for i in range(3):
+            for i in range(bkg_polish_count):
                 map = lcms.get_intensity_map(data, low_treshold=low_intens_treshold, param=4)
                 data = lcms.find_inner_points(data, map, neighbor_treshold=neighbor_treshold, param=4)
 
@@ -76,22 +84,33 @@ with col1:
 
         if is_identify and sequence != '':
 
-            explainer = lcms.oligoMassExplainer2(sequence, deconv_data)
-            explainer.explain_2(mass_treshold=2)
-            explainer.group_by_type_2()
-
-            if is_droped:
-                explainer.drop_artifacts(mass_thold=mass_treshold)
+            if is_positive_mode:
+                explainer = lcms.peptideMassExplainer(sequence, deconv_data)
+                explainer.explain_2(mass_treshold=1)
+                explainer.group_by_type_2()
+            else:
+                explainer = lcms.oligoMassExplainer2(sequence, deconv_data)
                 explainer.explain_2(mass_treshold=2)
                 explainer.group_by_type_2()
+
+            if is_droped:
+                if not is_positive_mode:
+                    explainer.drop_artifacts(mass_thold=mass_treshold)
+                    explainer.explain_2(mass_treshold=2)
+                    explainer.group_by_type_2()
 
 
         if is_drop_unk and is_identify and sequence != '':
             deconv_data = explainer.drop_unknown(explainer.mass_tab)
 
-            explainer = lcms.oligoMassExplainer2(sequence, deconv_data)
-            explainer.explain_2(mass_treshold=2)
-            explainer.group_by_type_2()
+            if is_positive_mode:
+                explainer = lcms.peptideMassExplainer(sequence, deconv_data)
+                explainer.explain_2(mass_treshold=1)
+                explainer.group_by_type_2()
+            else:
+                explainer = lcms.oligoMassExplainer2(sequence, deconv_data)
+                explainer.explain_2(mass_treshold=2)
+                explainer.group_by_type_2()
 
 
         rt_max = int(round(data[:, 0].max(), 0))
