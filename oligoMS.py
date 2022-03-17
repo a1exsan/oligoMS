@@ -432,6 +432,11 @@ class oligoMassExplainer2(oligoMassExplainer):
             'aPurin_G', self.seq, 150., 'aPurin_G', 1, 7
         self.hypo_tab.append(d)
 
+        d = {}
+        d['name'], d['seq'], d['deltaM'], d['type'], d['cf'], d['thold'] = \
+            'DMT-mod', self.seq, 302., 'DMT-mod', 1, 3
+        self.hypo_tab.append(d)
+
         #dna = omass.oligoSeq(self.seq)
         dna = mmo.oligoNASequence(self.seq)
 
@@ -506,7 +511,7 @@ class oligoMassExplainer2(oligoMassExplainer):
                             massTab[i]['type'] = h['type']
                             massTab[i]['name'] = h['name']
                             massTab[i]['seq'] = h['seq']
-                else:
+                elif h['name'].find('aPurin') != -1:
                     for i, m in enumerate(massTab):
                         diff = molecular_weight * h['cf'] - h['deltaM']
                         if abs(m['mass'] - diff) <= mass_treshold and diff > 0:
