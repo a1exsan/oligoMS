@@ -6,6 +6,7 @@ from oligoMass import molmassOligo as mmo
 import pickle
 import msvis
 import pymzml
+import molmass as mmass
 
 pd.set_option('display.max_rows', 500)
 pd.set_option('display.max_columns', 500)
@@ -541,6 +542,112 @@ class oligoMassExplainer2(oligoMassExplainer):
 
         self.mass_tab = pd.DataFrame(massTab)
 
+        self.mass_tab['area'] = np.zeros(self.mass_tab.shape[0])
+        total = self.mass_tab['intens'].sum()
+
+        self.mass_tab['area%'] = self.mass_tab['intens'] * 100 / total
+        self.mass_tab = self.mass_tab.sort_values(by='area', ascending=False)
+
+
+#################################################################################
+###############           PEPTIDES EXPLAINATION           #######################
+#################################################################################
+
+class AASequence():
+    def __init__(self, seq):
+        self.seq = seq
+        self.seq_dict = {'A': 'Ala', 'G': 'Gly', 'C': 'Cys', 'R': 'Arg', 'N': 'Asn', 'D': 'Asp', 'Q': 'Gln',
+                         'E': 'Glu', 'H': 'His', 'I': 'Ile', 'L': 'Leu', 'K': 'Lys', 'M': 'Met', 'F': 'Phe',
+                         'P': 'Pro', 'S': 'Ser', 'T': 'Thr', 'W': 'Trp', 'Y': 'Tyr', 'V': 'Val'}
+
+    def get_fragments(self, pos):
+        return self.seq[: pos], self.seq[pos :]
+
+    def seq2formula(self, seq):
+        f = ''
+        for s in seq:
+            f += self.seq_dict[s]
+        return f
+
+    def getAvgMass(self, seq=None):
+        if seq == None:
+            seq = self.seq
+        return mmass.Formula(self.seq2formula(seq)).mass + mmass.Formula('H2O').mass
+
+
+class peptideMassExplainer(MassExplainer):
+    def __init__(self, seq, mass_tab):
+        super().__init__(seq, mass_tab)
+
+    def generate_hypothesis(self):
+        self.hypo_tab = []
+
+        d = {}
+        d['name'], d['seq'], d['deltaM'], d['type'], d['cf'], d['label'] = 'main', self.seq, 0., 'main', 1, str(0)
+        self.hypo_tab.append(d)
+
+        #seq = poms.AASequence.fromString(self.seq)
+        aa_seq = AASequence(self.seq)
+
+        for i in range(len(self.seq) - 1):
+            prefix, suffix = aa_seq.get_fragments(i + 1)
+            #prefix = seq.getPrefix(i + 1)
+            #suffix = seq.getSuffix(len(self.seq) - 1 - i)
+
+            #print(f'{str(prefix)} {str(suffix)} mass {round(prefix.getAverageWeight(), 2)} mass {round(suffix.getAverageWeight(), 2)}')
+
+            d = {}
+            d['name'], d['seq'], d['deltaM'], d['type'], d['cf'], d['label'] = f'N-frag_{i + 1}', str(prefix), 0., f'N-frag', 1, str(i + 1)
+            self.hypo_tab.append(d)
+
+            d = {}
+            d['name'], d['seq'], d['deltaM'], d['type'], d['cf'], d['label'] = f'C-frag_{len(self.seq) - i - 1}', str(suffix), 0., f'C-frag', 1, str(i + 1)
+            self.hypo_tab.append(d)
+
+    def group_by_type(self):
+        self.gTab = self.mass_tab.groupby('type').agg(
+            {'mass':'first', 'area':'sum', 'rt':'mean',
+            'charge':'max', 'class':'max', 'area%':'sum',
+            'type':'first', 'name':'first', 'seq':'first',
+             'label':'first'})
+
+        self.gTab['purity%'] = (self.gTab['area'] / self.gTab['area'].sum()) * 100
+
+        self.gTab = self.gTab.reset_index(drop=True)
+
+
+    def explain(self, mass_treshold=3):
+
+        massTab = list(self.mass_tab.T.to_dict().values())
+        for h in self.hypo_tab:
+            #dna = osa.dnaSeq(h['seq'])
+            #molecular_weight = poms.AASequence.fromString(h['seq']).getAverageWeight()
+            molecular_weight = AASequence(h['seq']).getAvgMass()
+            for i, m in enumerate(massTab):
+                if abs(m['mass'] - molecular_weight * h['cf'] - h['deltaM']) <= mass_treshold:
+                    massTab[i]['type'] = h['type']
+                    massTab[i]['name'] = h['name']
+                    massTab[i]['seq'] = h['seq']
+                    massTab[i]['label'] = h['label']
+
+        self.mass_tab = pd.DataFrame(massTab)
+        self.mass_tab = self.mass_tab.sort_values(by='area', ascending=False)
+        self.mass_tab = self.mass_tab.fillna('unknown')
+
+    def explain_2(self, mass_treshold=3):
+
+        massTab = list(self.mass_tab.T.to_dict().values())
+        for h in self.hypo_tab:
+            #molecular_weight = poms.AASequence.fromString(h['seq']).getAverageWeight()
+            molecular_weight = AASequence(h['seq']).getAvgMass()
+            for i, m in enumerate(massTab):
+                if abs(m['mass'] - molecular_weight * h['cf'] - h['deltaM']) <= mass_treshold:
+                    massTab[i]['type'] = h['type']
+                    massTab[i]['name'] = h['name']
+                    massTab[i]['seq'] = h['seq']
+
+        self.mass_tab = pd.DataFrame(massTab)
+        self.mass_tab = self.mass_tab.fillna('unknown')
         self.mass_tab['area'] = np.zeros(self.mass_tab.shape[0])
         total = self.mass_tab['intens'].sum()
 
