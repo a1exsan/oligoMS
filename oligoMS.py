@@ -654,6 +654,109 @@ class peptideMassExplainer(MassExplainer):
         self.mass_tab['area%'] = self.mass_tab['intens'] * 100 / total
         self.mass_tab = self.mass_tab.sort_values(by='area', ascending=False)
 
+class oligoPipeline():
+    def __init__(self, fn, sequence):
+        self.seq = sequence
+        self.fn = fn
+        self.rt_interval = (50, 1700)
+        self.bkg_treshold = 500
+        self.neighbor_treshold = 60
+        self.low_intens_treshold = 6000
+        self.bkg_polish_count = 3
+        self.mass_treshold = 500
+        self.load_int_treshold = 5000
+        self.max_mz = 3200
+        self.polish_param = 4
+        self.delta_mass_treshold = 2
+        self.is_drop_artifacts = False
+        self.is_drop_unknown = False
+        self.max_n_1 = 5
+        self.gTab = None
+
+    def deconvolution(self, data, is_positive=False):
+        deconv = oligosDeconvolution(data[:, 0], data[:, 1], data[:, 2], is_positive=is_positive)
+        return deconv.deconvolute(), deconv
+
+    def pipeline(self):
+
+        data, bkg = open_mzml(self.fn, self.load_int_treshold, self.max_mz, self.rt_interval[0])
+        data = substract_bkg(data, bkg, treshold=self.bkg_treshold)
+        for i in range(self.bkg_polish_count):
+            map = get_intensity_map(data, low_treshold=self.low_intens_treshold, param=self.polish_param)
+            data = find_inner_points(data, map, neighbor_treshold=self.neighbor_treshold, param=self.polish_param)
+
+        deconv_data, deconv_obj = self.deconvolution(data, is_positive=False)
+        deconv_data = deconv_obj.rt_filtration(deconv_data, self.rt_interval[0], self.rt_interval[1])
+
+        explainer = oligoMassExplainer2(self.seq, deconv_data)
+        explainer.explain_2(mass_treshold=self.delta_mass_treshold)
+        explainer.group_by_type_2()
+
+        if self.is_drop_artifacts:
+            explainer.drop_artifacts(mass_thold=self.mass_treshold)
+            explainer.explain_2(mass_treshold=self.delta_mass_treshold)
+            explainer.group_by_type_2()
+
+        if self.is_drop_unknown:
+            deconv_data = explainer.drop_unknown(explainer.mass_tab)
+            explainer = oligoMassExplainer2(self.seq, deconv_data)
+            explainer.explain_2(mass_treshold=self.delta_mass_treshold)
+            explainer.group_by_type_2()
+
+        self.gTab = explainer.gTab.copy()
+
+        return explainer.gTab
+
+    def group_inpurit(self):
+        out_d = {}
+        out_d['main'] = self.gTab[self.gTab['type'] == 'main']['purity%'].sum()
+        out_d['like main'] = self.gTab[self.gTab['type'] == 'like main']['purity%'].sum()
+        out_d['aPurin'] = self.gTab[self.gTab['type'].isin(['aPurin_A', 'aPurin_G'])]['purity%'].sum()
+        out_d['Del'] = self.gTab[self.gTab['type'].str.contains('Del', regex=False)]['purity%'].sum()
+
+        nsum = 0.
+        for i in range(self.max_n_1):
+            out_d[f'3 end n-{i + 1}'] = self.gTab[self.gTab['type'].isin([f'3 end n - {i + 1}',
+                                                                          f'like 3 end n - {i + 1}'])]['purity%'].sum()
+            nsum += out_d[f'3 end n-{i + 1}']
+            out_d[f'5 end n-{i + 1}'] = self.gTab[self.gTab['type'].isin([f'5 end n - {i + 1}',
+                                                                          f'like 5 end n - {i + 1}'])]['purity%'].sum()
+            nsum += out_d[f'5 end n-{i + 1}']
+
+        out_d['n-x'] = self.gTab[self.gTab['type'].str.contains('end n -', regex=False)]['purity%'].sum()
+        out_d['n-x'] = out_d['n-x'] - nsum
+        out_d['unknown'] = self.gTab[self.gTab['type'] == 'unknown']['purity%'].sum()
+
+        #print(out_d)
+        #s = 0.
+        #for k in list(out_d.keys()):
+        #    s += out_d[k]
+        #print(s)
+        return out_d
+
+def oligoBase_lcms_file(input_csv):
+    input_df = pd.read_csv(input_csv)
+
+    perform = []
+    df1 = input_df
+    count = 0
+    for path, file, seq, id in zip(df1['file_path'], df1['file_name'], df1['sequence'], df1['lcms_id']):
+        try:
+            oligos = oligoPipeline(f'{path}/{file}', seq)
+            oligos.pipeline()
+            perform.append(oligos.group_inpurit())
+            perform[-1]['lcms_id'] = id
+            count += 1
+            print(f'{count} / {df1.shape[0]}')
+        except Exception as e:
+            print(e)
+
+    out_df = pd.DataFrame(perform)
+    input_df = input_df.merge(out_df, on='lcms_id', how='outer')
+    #input_df.to_csv(input_csv, index=False)
+
+    return input_df
+
 
 
 def test_deconv():
@@ -683,7 +786,16 @@ def test_deconv():
                                          data_['mass'], data_['intens'], rt_position=rt_pos)
     spec_viewer.draw_map(is_show=True)
 
+def test_pipeline():
+    #oligos = oligoPipeline('/home/alex/Documents/LCMS/oligos/synt/220322/mzml/NR_c1.mzML', 'CGAAGGTGTGACTTCCATG')
+    #oligos = oligoPipeline('/home/alex/Documents/LCMS/oligos/synt/220322/mzml/RPF_c4.mzML', 'A GAT TTG GAC CTG CGA GCG')
+    #print(oligos.pipeline())
+    #print(oligos.group_inpurit())
+
+    oligoBase_lcms_file('/home/alex/Documents/OligoSynt/DB/lsms_files.csv')
+
 
 if __name__=='__main__':
 
-    test_deconv()
+    #test_deconv()
+    test_pipeline()
