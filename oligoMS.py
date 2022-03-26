@@ -457,21 +457,21 @@ class oligoMassExplainer2(oligoMassExplainer):
             #seq = dna.seq_end_cut(self.seq, cut_number=i, end_type="5'")
             seq = dna.getPrefix(i).sequence
             d['name'], d['seq'], d['deltaM'], d['type'], d['cf'], d['thold'] = \
-                f'5 end n - {dna.size() - i}', seq, 0., f'5 end n - {dna.size() - i}', 1, 2
+                f'3 end n - {dna.size() - i}', seq, 0., f'3 end n - {dna.size() - i}', 1, 2
             self.hypo_tab.append(d)
 
             d = {}
             #dna = omass.oligoSeq(self.seq)
             #seq = dna.seq_end_cut(self.seq, cut_number=i, end_type="5'")
             d['name'], d['seq'], d['deltaM'], d['type'], d['cf'], d['thold'] = \
-                f'like 5 end n - {dna.size() - i}', seq, 0., f'like 5 end n - {dna.size() - i}', 1, 150
+                f'like 3 end n - {dna.size() - i}', seq, 0., f'like 3 end n - {dna.size() - i}', 1, 150
             self.hypo_tab.append(d)
 
             d = {}
             #dna = omass.oligoSeq(self.seq)
             #seq = dna.seq_end_cut(self.seq, cut_number=i, end_type="5'")
             d['name'], d['seq'], d['deltaM'], d['type'], d['cf'], d['thold'] = \
-                f'5 end n - {dna.size() - i} +Na', seq, 23., f'5 end n - {dna.size() - i}', 1, 3
+                f'3 end n - {dna.size() - i} +Na', seq, 23., f'3 end n - {dna.size() - i}', 1, 3
             self.hypo_tab.append(d)
 
             d = {}
@@ -479,21 +479,21 @@ class oligoMassExplainer2(oligoMassExplainer):
             #seq = dna.seq_end_cut(self.seq, cut_number=i, end_type="3'")
             seq = dna.getSuffix(i).sequence
             d['name'], d['seq'], d['deltaM'], d['type'], d['cf'], d['thold'] = \
-                f'3 end n - {i}', seq, 0., f'3 end n - {i}', 1, 2
+                f'5 end n - {i}', seq, 0., f'5 end n - {i}', 1, 2
             self.hypo_tab.append(d)
 
             d = {}
             #dna = omass.oligoSeq(self.seq)
             #seq = dna.seq_end_cut(self.seq, cut_number=i, end_type="3'")
             d['name'], d['seq'], d['deltaM'], d['type'], d['cf'], d['thold'] = \
-                f'like 3 end n - {i}', seq, 0., f'like 3 end n - {i}', 1, 100
+                f'like 5 end n - {i}', seq, 0., f'like 5 end n - {i}', 1, 100
             self.hypo_tab.append(d)
 
             d = {}
             #dna = omass.oligoSeq(self.seq)
             #seq = dna.seq_end_cut(self.seq, cut_number=i, end_type="3'")
             d['name'], d['seq'], d['deltaM'], d['type'], d['cf'], d['thold'] = \
-                f'3 end n - {i} +Na', seq, 23., f'3 end n - {i}', 1, 3
+                f'5 end n - {i} +Na', seq, 23., f'5 end n - {i}', 1, 3
             self.hypo_tab.append(d)
 
     def explain_2(self, mass_treshold=3):
