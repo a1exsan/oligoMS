@@ -6,4 +6,4 @@ pandas
 tqdm
 bokeh==2.4.1
 streamlit
-oligoMass==0.0.5
+oligoMass==0.0.7
