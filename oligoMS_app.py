@@ -1,4 +1,9 @@
+import pandas as pd
 import streamlit as st
+
+from bokeh.models.widgets import Button
+from bokeh.models import CustomJS
+from streamlit_bokeh_events import streamlit_bokeh_events
 
 import oligoMS as lcms
 import msvis
@@ -168,4 +173,58 @@ with col1:
                                "text/csv",
                                key='download-csv'
                                )
+
+
+            # Adding copy to clipboard
+
+
+            lcms_pipeline = lcms.oligoPipeline(explainer.gTab, explainer.seq)
+            lcms_pipeline.pipeline()
+            lcms_results = pd.DataFrame([lcms_pipeline.group_inpurit()])
+
+            lcms_results['clear_bkg'] = clear_bkg
+            lcms_results['polish_bkg'] = polish_bkg
+            lcms_results['rt_interval'] = str(rt_interval)
+            lcms_results['bkg_treshold'] = str(bkg_treshold)
+            lcms_results['is_positive_mode'] = is_positive_mode
+            lcms_results['neighbor_treshold'] = neighbor_treshold
+            lcms_results['low_intens_treshold'] = low_intens_treshold
+            lcms_results['bkg_polish_count'] = bkg_polish_count
+            lcms_results['is_deconv'] = is_deconv
+            lcms_results['is_identify'] = is_identify
+            lcms_results['is_droped'] = is_droped
+            lcms_results['mass_treshold'] = mass_treshold
+            lcms_results['is_drop_unk'] = is_drop_unk
+
+            st.dataframe(lcms_results)
+
+            copy_button = Button(label="Copy to clipboard")
+            copy_button.js_on_event("button_click", CustomJS(args=dict(df=lcms_results.to_csv(sep='\t',
+                                                                                              index=False)), code="""
+                navigator.clipboard.writeText(df);
+                """))
+
+            no_event = streamlit_bokeh_events(
+                copy_button,
+                events="GET_TEXT",
+                key="get_text",
+                refresh_on_update=True,
+                override_height=75,
+                debounce_time=0)
+
+            #
+            copy_button_1 = Button(label="Copy to clipboard w/o headers")
+            copy_button_1.js_on_event("button_click", CustomJS(args=dict(df=lcms_results.to_csv(sep='\t',
+                                                                                              index=False,
+                                                                                              header=False)), code="""
+                            navigator.clipboard.writeText(df);
+                            """))
+
+            no_event_1 = streamlit_bokeh_events(
+                copy_button_1,
+                events="GET_TEXT",
+                key="get_text_1",
+                refresh_on_update=True,
+                override_height=75,
+                debounce_time=0)
 
