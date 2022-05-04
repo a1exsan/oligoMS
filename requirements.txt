@@ -7,4 +7,4 @@ tqdm
 bokeh==2.4.1
 streamlit
 oligoMass==0.1.2
-streamlit-bokeh-pipevents
+streamlit_bokeh_events
