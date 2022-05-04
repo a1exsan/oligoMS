@@ -3,7 +3,6 @@ from tqdm import tqdm
 import pandas as pd
 from oligoMass import dna as omass
 from oligoMass import molmassOligo as mmo
-import pickle
 import msvis
 import pymzml
 import molmass as mmass
