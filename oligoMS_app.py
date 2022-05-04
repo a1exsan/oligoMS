@@ -1,6 +1,7 @@
 import pandas as pd
 import streamlit as st
 
+import oligoMass.molmassOligo as mmo
 from bokeh.models.widgets import Button
 from bokeh.models import CustomJS
 from streamlit_bokeh_events import streamlit_bokeh_events
@@ -27,6 +28,12 @@ def deconvolution(data, is_positive):
 is_positive_mode = st.sidebar.checkbox('Positive mode')
 #is_positive_mode = False
 sequence = st.sidebar.text_area('Enter sequence', '')
+
+if sequence != '':
+    oligos1 = mmo.oligoNASequence(sequence)
+    st.sidebar.write(f'Molecular mass: {oligos1.getAvgMass():.2f} Da')
+    st.sidebar.write(f'Extinction: {oligos1.getExtinction()} oe/mol')
+
 uploaded_file = st.sidebar.file_uploader("Choose a file (*.mzML)")
 
 col1, col2 = st.columns([3, 1])
@@ -146,7 +153,7 @@ with col1:
                                                 deconv_data['mono_mass'],
                                                 deconv_data['intens'], rt_position=-1, title='Deconvolution 2D map',
                                                 corner_points={'rt': [rt_left, rt_max], 'mz': [100, 3000]})
-            mass_viewer.ylabel = 'Mass, Da'
+            mass_viewer.yaxis_label = 'Mass, Da'
             mass_viewer.draw_map(is_show=False)
             st.bokeh_chart(mass_viewer.plot, use_container_width=True)
 
@@ -155,7 +162,7 @@ with col1:
                                                explainer.mass_tab['mono_mass'],
                                                explainer.mass_tab['intens'], rt_position=-1, title='Deconvolution 2D map',
                                                corner_points={'rt': [rt_left, rt_max], 'mz': [100, 3000]})
-            mass_viewer.ylabel = 'Mass, Da'
+            mass_viewer.yaxis_label = 'Mass, Da'
             mass_viewer.draw_map(is_show=False)
             st.bokeh_chart(mass_viewer.plot, use_container_width=True)
 

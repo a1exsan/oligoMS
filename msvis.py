@@ -354,8 +354,8 @@ class bokeh_mass_map(bokeh_ms_map):
 
     def draw_map(self, is_show=True):
 
-        self.plot.xaxis.axis_label = 'Retention time, s'
-        self.plot.yaxis.axis_label = 'Mass / charge'
+        self.plot.xaxis.axis_label = self.xaxis_label
+        self.plot.yaxis.axis_label = self.yaxis_label
 
         if len(self.corner_points['rt']) > 0 and len(self.corner_points['mz']) > 0:
             cp_x = np.array([self.corner_points['rt'][0], self.corner_points['rt'][0],
