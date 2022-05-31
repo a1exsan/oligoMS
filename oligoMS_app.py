@@ -17,7 +17,8 @@ def upload_mzML(name, sequence):
 
 @st.cache
 def upload_mzML_data(name, rt_left=100):
-    return lcms.open_mzml(name, int_treshold=5000, max_mz=3200, rt_left=rt_left)
+    return lcms.openMSdata(name, int_treshold=5000, max_mz=3200, rt_left=rt_left)
+    #lcms.open_mzml(name, int_treshold=5000, max_mz=3200, rt_left=rt_left)
 
 @st.cache
 def deconvolution(data, is_positive):

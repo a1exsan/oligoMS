@@ -6,6 +6,7 @@ from oligoMass import molmassOligo as mmo
 import msvis
 import pymzml
 import molmass as mmass
+import mzdatapy as mzpy
 
 pd.set_option('display.max_rows', 500)
 pd.set_option('display.max_columns', 500)
@@ -28,6 +29,13 @@ def open_mzml(fn, int_treshold=5000, max_mz=3200, rt_left=100):
                     vec[int(round(p[0], 0))] += 1
 
     return np.array(data), vec
+
+def openMSdata(fn, int_treshold=5000, max_mz=3200, rt_left=100):
+    if fn.find('mzdata') > -1:
+        spec = mzpy.mzdata(fn)
+        return spec.mzdata2tab(int_treshold=int_treshold, max_mz=max_mz, rt_left=rt_left)
+    elif fn.find('mzML') > -1:
+        return open_mzml(fn, int_treshold=int_treshold, max_mz=max_mz, rt_left=rt_left)
 
 def substract_bkg(data, bkg, treshold=3000):
     ret = []
@@ -86,7 +94,7 @@ class mzSpecDeconv():
                 for mz_index in range(len(clusters[len(clusters) - cl_index - 1])):
                     mz_cl = clusters[len(clusters) - cl_index - 1][mz_index][0]
                     mz = data['mz'].loc[index]
-                    if abs(mz - mz_cl) <= 1:
+                    if abs(mz - mz_cl) <= 1.05:
                         finded = True
                         clusters[len(clusters) - cl_index - 1].append(list(data.loc[index]))
                         data['class'].loc[index] = len(clusters) - cl_index - 1
@@ -104,6 +112,8 @@ class mzSpecDeconv():
         classes = list(set(data['class']))
         data['charge'] = np.zeros(data['mz'].shape[0])
         data['mass'] = np.ones(data['mz'].shape[0])
+
+        #print(data[data['class']==0.])
 
         if self.is_positive:
             sign = -1

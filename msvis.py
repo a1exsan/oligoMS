@@ -186,14 +186,18 @@ class bokeh_ms_spectra(map2D):
         self.title = title
         self.bkg_fill_color = "#fafafa"
 
-        data = self.data[self.data['rt'] == rt_position]
+        if rt_position >= 0:
+            data = self.data[self.data['rt'] == rt_position]
+        else:
+            data = self.data
         self.mz_data, self.int_data = data.values[:, 1], data.values[:, 2]
+        self.plot_height = 200
 
 
     def draw_map(self, is_show=True):
 
         self.plot = figure(title=self.title, background_fill_color=self.bkg_fill_color,
-                           plot_height=200)
+                           plot_height=self.plot_height)
         self.plot.xaxis.axis_label = 'Mass / Z'
         self.plot.yaxis.axis_label = 'Intensity'
 
