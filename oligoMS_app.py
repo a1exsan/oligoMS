@@ -78,6 +78,10 @@ with col2:
 
     is_drop_unk = st.checkbox('Drop unknown')
 
+    # viridis, magma, inferno, cividis
+    colorMap = st.radio('Select Color Map',
+                        ('monochrome', 'viridis', 'magma', 'inferno', 'cividis'))
+
 with col1:
     if uploaded_file is not None:# and sequence != '':
         with open(f'data/temp/{uploaded_file.name}', 'wb') as f:
@@ -134,7 +138,7 @@ with col1:
         rt_pos = st.select_slider('select spectra', options=range(0, rt_max, 1))
 
         viewer = msvis.bokeh_mass_map(data[:, 0], data[:, 1], data[:, 2], rt_position=rt_pos, title='LCMS 2D map',
-                                      corner_points={'rt': [rt_left, rt_max], 'mz': [100, 2000]})
+                                      corner_points={'rt': [rt_left, rt_max], 'mz': [100, 2000]}, colorMap=colorMap)
         viewer.draw_map(is_show=False)
         st.bokeh_chart(viewer.plot, use_container_width=True)
 
@@ -153,7 +157,8 @@ with col1:
             mass_viewer = msvis.bokeh_mass_map(deconv_data['rt'],
                                                 deconv_data['mono_mass'],
                                                 deconv_data['intens'], rt_position=-1, title='Deconvolution 2D map',
-                                                corner_points={'rt': [rt_left, rt_max], 'mz': [100, 3000]})
+                                                corner_points={'rt': [rt_left, rt_max], 'mz': [100, 3000]},
+                                               colorMap=colorMap)
             mass_viewer.yaxis_label = 'Mass, Da'
             mass_viewer.draw_map(is_show=False)
             st.bokeh_chart(mass_viewer.plot, use_container_width=True)
@@ -162,7 +167,8 @@ with col1:
             mass_viewer = msvis.bokeh_mass_map(explainer.mass_tab['rt'],
                                                explainer.mass_tab['mono_mass'],
                                                explainer.mass_tab['intens'], rt_position=-1, title='Deconvolution 2D map',
-                                               corner_points={'rt': [rt_left, rt_max], 'mz': [100, 3000]})
+                                               corner_points={'rt': [rt_left, rt_max], 'mz': [100, 3000]},
+                                               colorMap=colorMap)
             mass_viewer.yaxis_label = 'Mass, Da'
             mass_viewer.draw_map(is_show=False)
             st.bokeh_chart(mass_viewer.plot, use_container_width=True)

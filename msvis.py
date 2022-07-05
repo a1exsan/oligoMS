@@ -4,6 +4,7 @@ import pickle
 import numpy as np
 
 from bokeh.plotting import figure, show
+from bokeh.palettes import viridis, magma, inferno, cividis
 
 class map2D():
     def __init__(self, rt, mz, intens):
@@ -353,8 +354,31 @@ class bokeh_ms_map_class(map2D):
             show(self.plot)
 
 class bokeh_mass_map(bokeh_ms_map):
-    def __init__(self,  rt, mz, intens, rt_position=200, title='lcms data', corner_points={'rt':[], 'mz':[]}):
+    def __init__(self,  rt, mz, intens, rt_position=200, title='lcms data', corner_points={'rt':[], 'mz':[]},
+                 colorMap='Old'):
         super().__init__(rt, mz, intens, rt_position, title, corner_points)
+        self.colorMap = colorMap
+        self.__set_colors()
+
+    def __set_colors(self):
+        norm_intens = np.log2(self.data['intens'].values)
+        norm_intens = (norm_intens - np.min(norm_intens)) / (np.max(norm_intens) - np.min(norm_intens))
+        norm_intens = [int(round(i*255)) for i in norm_intens]
+
+        #viridis, magma, inferno, cividis
+        if self.colorMap == 'viridis':
+            all_colors = viridis(256)
+        elif self.colorMap == 'magma':
+            all_colors = magma(256)
+        elif self.colorMap == 'inferno':
+            all_colors = inferno(256)
+        elif self.colorMap == 'cividis':
+            all_colors = cividis(256)
+        else:
+            all_colors = []
+
+        if len(all_colors) > 0:
+            self.colors = [all_colors[i] for i in norm_intens]
 
     def draw_map(self, is_show=True):
 
@@ -391,6 +415,15 @@ def main():
     #map = bokeh_ms_map(data[:, 0], data[:, 1], data[:, 2])
     map.draw_map()
 
+def test1():
+    import mzdatapy as mzpy
+    spec = mzpy.mzdata('/home/alex/Documents/LCMS/oligos/synt/220622/dT18_c2_4.mzdata.xml')
+    data, vec = spec.mzdata2tab()
+    # viridis, magma, inferno, cividis
+    viewer = bokeh_mass_map(data[:, 0], data[:, 1], data[:, 2], rt_position=0, title='LCMS 2D map',
+                                  corner_points={'rt': [0, 1500], 'mz': [100, 2000]}, colorMap='cividis')
+    viewer.draw_map(is_show=True)
+
 
 if __name__ == '__main__':
-    main()
+    test1()
