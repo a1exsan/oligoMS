@@ -89,6 +89,24 @@ def test1():
     data, vec = spec.mzdata2tab()
     print(data)
 
+def test2():
+
+    import pandas as pd
+    import matplotlib.pyplot as plt
+
+    spec = mzdata('/home/alex/Documents/LCMS/oligos/synt/220622/dT18_c2_4.mzdata.xml')
+    data, vec = spec.mzdata2tab()
+    df = pd.DataFrame(data=data, columns=['rt', 'mz', 'intens'])
+    df = df[(df['rt']>=1000)&(df['rt']<=1080)]
+    df = df[(df['mz']>=1700)&(df['mz']<=1750)]
+    print(df)
+
+    plt.scatter(df['rt'], df['mz'], s=1)
+    plt.show()
+
+    df.to_csv('/home/alex/Documents/LCMS/test_data.csv', index=False)
+
+
 
 if __name__ == '__main__':
-    test1()
+    test2()
