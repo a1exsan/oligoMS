@@ -361,9 +361,11 @@ class bokeh_mass_map(bokeh_ms_map):
         self.__set_colors()
 
     def __set_colors(self):
-        norm_intens = np.log2(self.data['intens'].values)
+        norm_intens = np.log(self.data['intens'].values)
+        #norm_intens = np.log2(self.data['intens'].values)
+        #norm_intens = np.sqrt(self.data['intens'].values)
         norm_intens = (norm_intens - np.min(norm_intens)) / (np.max(norm_intens) - np.min(norm_intens))
-        norm_intens = [int(round(i*255)) for i in norm_intens]
+        norm_intens = [int(round(i*205 + 50)) for i in norm_intens]
 
         #viridis, magma, inferno, cividis
         if self.colorMap == 'viridis':
