@@ -480,7 +480,7 @@ class oligoMassExplainer2(oligoMassExplainer):
             d = {}
             seq = dna.getSuffix(i).sequence
             d['name'], d['seq'], d['deltaM'], d['type'], d['cf'], d['thold'] = \
-                f'5 end n - {i}', seq, 0., f'5 end n - {i}', 1, 2
+                f'5 end n - {i}', f'{seq}', 0., f'5 end n - {i}', 1, 2 #[C3H4O]
             self.hypo_tab.append(d)
 
             d = {}
