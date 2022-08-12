@@ -1,0 +1,15 @@
+code	mass	ext_cf	formula+	formula-	in_base
+5Phos	80.0	0			True
+iFluorT	816.7	13700			True
++m	0.0	0	C2H2O		True
+LNA	0.0	0	CO		True
+tio	0.0	0	S	O	True
+6FAM	537.5	20960			True
+56-FAM	537.5	20960			True
+SIMA	759.0	31600			True
+BHQ1	0.0	35935	C21H18N6O3C4O2H9PO2		True
+3BHQ_1	0.0	35935	C21H18N6O3C4O2H9PO2		True
+BHQ2	0.0	34000	C20H16N6O4C4O2H9PO2		True
+Cy5	612.0	250000			True
+Cy5.5	712.0	198000			True
+mC_LNA	0	0	C2H2O		True

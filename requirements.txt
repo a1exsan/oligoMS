@@ -6,5 +6,5 @@ pandas
 tqdm
 bokeh
 streamlit
-oligoMass==0.1.8
+oligoMass==0.1.9
 streamlit_bokeh_events
