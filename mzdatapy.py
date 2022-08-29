@@ -23,6 +23,7 @@ class mzdata():
             self._parse()
 
     def _parse(self):
+        self.max_mz = 0
         for i in self.root.iter():
             if i.tag == 'spectrum':
                 spectrum = spec_data()
@@ -52,6 +53,10 @@ class mzdata():
                     raw_data = base64.decodebytes(str.encode(i.text))
                     out = struct.unpack('<%sd' % (len(raw_data) // 8), raw_data)
                     spectrum.mz_dict['mz_list'] = list(out)
+
+                    mmax = max(spectrum.mz_dict['mz_list'])
+                    if self.max_mz < mmax:
+                        self.max_mz = mmax
                     #print(out)
 
                 else:
@@ -83,6 +88,20 @@ class mzdata():
 
         return np.array(data), vec
 
+    def mzdata2tab_all(self, int_treshold=5000):
+
+        vec = [0 for i in range(int(round(self.max_mz, 0)) + 10)]
+
+        data = []
+        for s in tqdm(self.data):
+            rt = s.RT['value']
+            for mz, intens in zip(s.mz_dict['mz_list'], s.intens_dict['intens_list']):
+                if intens >= int_treshold:
+                    v = [rt, mz, intens]
+                    data.append(v)
+                    vec[int(round(mz, 0))] += 1
+
+        return np.array(data), vec
 
 def test1():
     spec = mzdata('/home/alex/Documents/LCMS/oligos/synt/300522/NP_c1_f3.mzdata')
