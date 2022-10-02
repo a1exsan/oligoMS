@@ -57,10 +57,10 @@ with col2:
         neighbor_treshold = st.select_slider('select neighbor treshold', options=range(10, 100, 5), value=60)
 
     if is_positive_mode:
-        low_intens_treshold = st.select_slider('low intensity treshold', options=range(1000, 100000, 1000), value=7000)
+        low_intens_treshold = st.select_slider('low intensity treshold', options=range(100, 10000, 100), value=7000)
         st.write('low intensity treshold', low_intens_treshold)
     else:
-        low_intens_treshold = st.select_slider('low intensity treshold', options=range(1000, 100000, 1000), value=6000)
+        low_intens_treshold = st.select_slider('low intensity treshold', options=range(100, 10000, 100), value=6000)
         st.write('low intensity treshold', low_intens_treshold)
 
     if is_positive_mode:

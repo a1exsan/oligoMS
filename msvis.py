@@ -5,7 +5,30 @@ import numpy as np
 
 from bokeh.plotting import figure, show
 from bokeh.palettes import viridis, magma, inferno, cividis
+from bokeh.models import ColumnDataSource
 
+class charts1D_bokeh():
+    def __init__(self, data, title='chart', x_label='x axis', y_label='y axis'):
+        self.data = data
+        self.title = title
+        self.bkg_fill_color = "#fafafa"
+        self.plot_height = 300
+        self.x_label = x_label
+        self.y_label = y_label
+
+    def draw(self, is_show='False'):
+        self.plot = figure(title=self.title, background_fill_color=self.bkg_fill_color,
+                           plot_height=self.plot_height)
+        self.plot.xaxis.axis_label = self.x_label
+        self.plot.yaxis.axis_label = self.y_label
+
+        for row in self.data:
+            self.plot.line(x=range(self.data[0].shape[0]),
+                            y=row)#,
+                           #line_color='rgba(0, 0, 200, 0.5)')
+
+        if is_show:
+            show(self.plot)
 class map2D():
     def __init__(self, rt, mz, intens):
         self.data = pd.DataFrame({'rt': list(rt), 'mz': list(mz), 'intens': list(intens)})
