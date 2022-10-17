@@ -87,6 +87,28 @@ class simple_ms_map(map2D):
         if self.is_show:
             plt.show()
 
+class matplotlib_lcms2Dmap(map2D):
+    def __init__(self, rt, mz, intens, title='lcms data', x_labe='Retention time, s', y_label='Mass/Charge'):
+        super().__init__(rt, mz, intens)
+
+        self.transperancy = 0.6
+        self.title = title
+        self.x_label = x_labe
+        self.y_label = y_label
+
+    def draw_map(self, is_show=True):
+
+        plt.title(self.title)
+        plt.scatter(self.data['rt'], self.data['mz'], s=3, color=self.color, alpha=self._alphas)
+        plt.xlabel(f'{self.x_label}')
+        plt.ylabel(f'{self.y_label}')
+        plt.grid(True)
+
+        self.is_show = is_show
+
+        if self.is_show:
+            plt.show()
+
 class labeled_ms_map(map2D):
     def __init__(self, rt, mz, intens, labels, title='lcms data'):
         super().__init__(rt, mz, intens)

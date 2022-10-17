@@ -1,4 +1,5 @@
 import pandas as pd
+import numpy as np
 import streamlit as st
 
 import oligoMSExplainer as MSE
@@ -59,6 +60,9 @@ with col2:
     colorMap = st.radio('Select Color Map',
                         ('monochrome', 'viridis', 'magma', 'inferno', 'cividis'))
 
+    integ_start = st.text_area('Integrate TIC from:', 0, max_chars=10)
+    integ_end = st.text_area('Integrate TIC to:', 0, max_chars=10)
+
 with col1:
     if uploaded_file is not None:# and sequence != '':
         with open(f'data/temp/{uploaded_file.name}', 'wb') as f:
@@ -79,10 +83,22 @@ with col1:
             lcms_data.ms2matrix_1()
             data = lcms_data.data
 
+        lcms_data.ms2matrix_1()
+        matrix = lcms_data.matrix.T
+        TIC = [matrix @ np.ones(matrix.shape[1])]
+
         viewer = msvis.bokeh_mass_map(data[:, 0], data[:, 1], data[:, 2], rt_position=rt_pos, title='LCMS 2D map',
                                   corner_points={'rt': [rt_left, rt_max], 'mz': [100, 2000]}, colorMap=colorMap)
         viewer.draw_map(is_show=False)
         st.bokeh_chart(viewer.plot, use_container_width=True)
+
+        tic_view = msvis.charts1D_bokeh(TIC, x_label='Retention time, sec',
+                                        y_label='Intensity', title='TIC')
+        tic_view.draw(is_show=False)
+        st.bokeh_chart(tic_view.plot, use_container_width=True)
+
+        purity = MSE.chromInteg(TIC[0], baseconst=100)
+        st.write(f'set purity: {purity.integrate(int(integ_start), int(integ_end)):.2f}%')
 
         if is_identify and sequence != '':
             oligos = MSE.oligoTree(sequence=sequence, min_mz=min_mz, max_mz=lcms_data.mz_max,
@@ -91,15 +107,26 @@ with col1:
             id_results = oligos.mul(lcms_data)
             grouped = oligos.group_data(id_results['data'])
 
+            main_rt_min = grouped[grouped['oligo type'] == 'main']['rt min'].max()
+            main_rt_max = grouped[grouped['oligo type'] == 'main']['rt max'].max()
+
+            purity2 = MSE.chromInteg(TIC[0], baseconst=100)
+            st.write(f'auto purity: {purity2.integrate(int(main_rt_min), int(main_rt_max)):.2f}%')
+
+            #bscore_view = msvis.charts1D_bokeh(id_results['TIC'], x_label='Retention time, sec',
+            #                                   y_label='Intensity', title='TIC')
+            #bscore_view.draw(is_show=False)
+            #st.bokeh_chart(bscore_view.plot, use_container_width=True)
+
             score_view = msvis.charts1D_bokeh(id_results['score chrom'], x_label='Retention time, sec',
                                               y_label='score', title='Score map')
             score_view.draw(is_show=False)
             st.bokeh_chart(score_view.plot, use_container_width=True)
 
-            bscore_view = msvis.charts1D_bokeh(id_results['bit score'], x_label='Retention time, sec',
-                                              y_label='bscore', title='bitScore map')
-            bscore_view.draw(is_show=False)
-            st.bokeh_chart(bscore_view.plot, use_container_width=True)
+            #bscore_view = msvis.charts1D_bokeh(id_results['bit score'], x_label='Retention time, sec',
+            #                                  y_label='bscore', title='bitScore map')
+            #bscore_view.draw(is_show=False)
+            #st.bokeh_chart(bscore_view.plot, use_container_width=True)
 
             chrom_view = msvis.charts1D_bokeh(id_results['chrom'], x_label='Retention time, sec',
                                               y_label='Total intensity', title='Chromatograms')

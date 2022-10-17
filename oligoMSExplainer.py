@@ -4,6 +4,24 @@ from oligoMass import molmassOligo as mmo
 import mzdatapy as mzdata
 import numpy as np
 
+class chromInteg():
+    def __init__(self, TIC, baseline=None, baseconst=100):
+        if baseline == None:
+            self.baseline = np.zeros(TIC.shape[0]) + baseconst
+        else:
+            self.baseline = baseline
+
+        self.TIC = TIC
+        self.substruct_bkg()
+
+    def substruct_bkg(self):
+        self.TIC -= self.baseline
+        self.TIC = np.array([i if i > 0 else 0 for i in self.TIC])
+
+    def integrate(self, a, b):
+        target = sum(self.TIC[a : b])
+        return target * 100 / sum(self.TIC)
+
 class lcmsData():
     def __init__(self, fn='', mode='-', int_treshold=5000, init_data=None, bkg=None):
         self.fn = fn
@@ -224,7 +242,7 @@ class oligoTree():
             #print(prefix.sequence, suffix.sequence, deletion)
 
     def mul(self, lcms_data):
-        ret = {'data': [], 'chrom': [], 'MSscore': [], 'score chrom': [], 'bit score': []}
+        ret = {'data': [], 'chrom': [], 'MSscore': [], 'score chrom': [], 'bit score': [], 'rt index': []}
         matrix = lcms_data.matrix.T
         bit_matrix = lcms_data.bit_matrix.T
         #total_intens_vec = np.sum(matrix, axis=1) + 1.
@@ -237,6 +255,9 @@ class oligoTree():
             if sum_vec != 0:
                 ret['score chrom'].append(score_vec / sum_vec)
                 ret['bit score'].append(np.array([1 if i >= self.score_treshold else 0 for i in ret['score chrom'][-1]]))
+                rt_index = np.array([i for i in range(ret['score chrom'][-1].shape[0])]) * ret['bit score'][-1]
+                ret['rt index'].append(np.where(rt_index > 0)[0])
+                #print(ret['rt index'])
             else:
                 ret['score chrom'].append(score_vec * 0)
                 ret['bit score'].append(score_vec * 0)
@@ -252,11 +273,17 @@ class oligoTree():
         total_peaks_area = np.sum(ret['chrom'])
 
         chromList = []
-        for chrom, oligo, MSscore in zip(ret['chrom'], self.__oligos, ret['MSscore']):
+        for chrom, oligo, MSscore, rt in zip(ret['chrom'], self.__oligos, ret['MSscore'], ret['rt index']):
             d = {}
             d['peak area'] = np.sum(chrom)
             if d['peak area'] > 0:
                 d['peak area %'] = d['peak area'] * 100 / total_peaks_area
+                if len(rt) > 0:
+                    d['rt min'] = rt[0]
+                    d['rt max'] = rt[-1]
+                else:
+                    d['rt min'] = 0
+                    d['rt max'] = 0
                 d['peak area total %'] = d['peak area'] * 100 / total_matrix_area
                 d['oligo name'] = oligo.name
                 d['oligo type'] = oligo.type
@@ -274,7 +301,7 @@ class oligoTree():
 
     def group_data(self, data):
 
-        df = data.groupby('oligo type').agg({'peak area': 'sum', 'peak area %': 'sum',
+        df = data.groupby('oligo type').agg({'peak area': 'sum', 'peak area %': 'sum', 'rt min': 'max', 'rt max': 'max',
                                               'peak area total %': 'sum', 'score': 'max',
                                               'oligo mass': 'min', 'oligo seq': 'first'})
         df.reset_index(inplace=True)
