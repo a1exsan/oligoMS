@@ -1,6 +1,10 @@
 import pandas as pd
 import streamlit as st
 
+import oligoMSExplainer as MSE # для рассчета площади пика
+import mzdatapy as mzdata  # для рассчета площади пика
+import numpy as np # для рассчета площади пика
+
 import oligoMass.molmassOligo as mmo
 from bokeh.models.widgets import Button
 from bokeh.models import CustomJS
@@ -14,6 +18,11 @@ st.set_page_config(layout="wide")
 @st.cache
 def upload_mzML(name, sequence):
     return lcms.lcms_peptide(name, sequence)
+
+@st.cache#(allow_output_mutation=True)
+def upload_lcms_data(file_name):
+    spec = mzdata.mzdata(file_name)
+    return spec.mzdata2tab_all(int_treshold=0)
 
 @st.cache
 def upload_mzML_data(name, rt_left=100):
@@ -78,6 +87,13 @@ with col2:
 
     is_drop_unk = st.checkbox('Drop unknown')
 
+    score_treshold = st.select_slider('score treshold', options=range(0, 100, 1), value=10)   # для рассчета площади пика
+    score_treshold = score_treshold / 100                                                     # для рассчета площади пика
+    st.write('score treshold', score_treshold)                                                # для рассчета площади пика
+
+    integ_start = st.text_area('Integrate TIC from:', 0, max_chars=10)  # для рассчета площади пика
+    integ_end = st.text_area('Integrate TIC to:', 0, max_chars=10)      # для рассчета площади пика
+
     # viridis, magma, inferno, cividis
     colorMap = st.radio('Select Color Map',
                         ('monochrome', 'viridis', 'magma', 'inferno', 'cividis'))
@@ -90,8 +106,21 @@ with col1:
         rt_left = rt_interval[0]
         data, bkg = upload_mzML_data(f'data/temp/{uploaded_file.name}', rt_left=rt_left)
 
+        init_data, bkg1 = upload_lcms_data(f'data/temp/{uploaded_file.name}') # для рассчета площади пика
+        lcms_data = MSE.lcmsData(init_data=init_data, bkg=bkg1)               # для рассчета площади пика
+        data1 = lcms_data.data                                                # для рассчета площади пика
+
         if clear_bkg:
             data = lcms.substract_bkg(data, bkg, treshold=bkg_treshold)
+
+            lcms_data.substruct_bkg(treshold=bkg_treshold, int_treshold=low_intens_treshold,    # для рассчета площади пика
+                                    max_rt=rt_interval[1], min_rt=rt_left, min_mz=200)
+            lcms_data.ms2matrix_1()                                                             # для рассчета площади пика
+            data1 = lcms_data.data                                                             # для рассчета площади пика
+
+        lcms_data.ms2matrix_1()                      # для рассчета площади пика
+        matrix = lcms_data.matrix.T                  # для рассчета площади пика
+        TIC = [matrix @ np.ones(matrix.shape[1])]    # для рассчета площади пика
 
         if polish_bkg:
             for i in range(bkg_polish_count):
@@ -141,6 +170,28 @@ with col1:
                                       corner_points={'rt': [rt_left, rt_max], 'mz': [100, 2000]}, colorMap=colorMap)
         viewer.draw_map(is_show=False)
         st.bokeh_chart(viewer.plot, use_container_width=True)
+
+        tic_view = msvis.charts1D_bokeh(TIC, x_label='Retention time, sec',               # для рассчета площади пика
+                                        y_label='Intensity', title='TIC')                 # для рассчета площади пика
+        tic_view.draw(is_show=False)
+        st.bokeh_chart(tic_view.plot, use_container_width=True)                           # для рассчета площади пика
+
+        purity = MSE.chromInteg(TIC[0], baseconst=100)                                      # для рассчета площади пика
+        st.write(f'set purity: {purity.integrate(int(integ_start), int(integ_end)):.2f}%')  # для рассчета площади пика
+
+        if sequence != '':
+            oligos = MSE.oligoTree(sequence=sequence, min_mz=200, max_mz=lcms_data.mz_max,      # для рассчета площади пика
+                                   vector_shape=lcms_data.vector_shape(), score_treshold=score_treshold)  # для рассчета площади пика
+
+            id_results = oligos.mul(lcms_data)                                                    # для рассчета площади пика
+            grouped = oligos.group_data(id_results['data'])                                       # для рассчета площади пика
+
+            main_rt_min = grouped[grouped['oligo type'] == 'main']['rt min'].max()                # для рассчета площади пика
+            main_rt_max = grouped[grouped['oligo type'] == 'main']['rt max'].max()                # для рассчета площади пика
+
+            purity2 = MSE.chromInteg(TIC[0], baseconst=100)                                         # для рассчета площади пика
+            st.write(f'auto purity: {purity2.integrate(int(main_rt_min), int(main_rt_max)):.2f}%')  # для рассчета площади пика
+
 
         if is_deconv:
             spec_viewer = msvis.bokeh_ms_spectra(deconv_data['rt'], deconv_data['mono_mass'],
