@@ -131,6 +131,7 @@ with col1:
             deconv_data, deconv_obj = deconvolution(data, is_positive=is_positive_mode)
             deconv_data = deconv_obj.rt_filtration(deconv_data, rt_interval[0], rt_interval[1])
 
+
         if is_identify and sequence != '':
 
             if is_positive_mode:
@@ -179,7 +180,7 @@ with col1:
         purity = MSE.chromInteg(TIC[0], baseconst=100)                                      # для рассчета площади пика
         st.write(f'set purity: {purity.integrate(int(integ_start), int(integ_end)):.2f}%')  # для рассчета площади пика
 
-        if sequence != '':
+        if sequence != '' and not is_positive_mode:
             oligos = MSE.oligoTree(sequence=sequence, min_mz=200, max_mz=lcms_data.mz_max,      # для рассчета площади пика
                                    vector_shape=lcms_data.vector_shape(), score_treshold=score_treshold)  # для рассчета площади пика
 
@@ -198,6 +199,13 @@ with col1:
                                                  deconv_data['intens'], rt_position=rt_pos)
             spec_viewer.draw_map(is_show=False)
             st.bokeh_chart(spec_viewer.plot, use_container_width=True)
+
+            st.download_button('Download deconvolution data as csv', deconv_data.to_csv().encode('utf-8'),
+                                   f"{uploaded_file.name}_deconv_results.csv",
+                                   "text/csv",
+                                   key='download-csv'
+                                   )
+
         else:
             spec_viewer = msvis.bokeh_ms_spectra(data[:, 0], data[:, 1],
                                                  data[:, 2], rt_position=rt_pos)
@@ -223,6 +231,12 @@ with col1:
             mass_viewer.yaxis_label = 'Mass, Da'
             mass_viewer.draw_map(is_show=False)
             st.bokeh_chart(mass_viewer.plot, use_container_width=True)
+
+            st.download_button('Download deconvolution data as csv', deconv_data.to_csv().encode('utf-8'),
+                               f"{uploaded_file.name}_deconv_results.csv",
+                               "text/csv",
+                               key='alldata-download-csv'
+                               )
 
 
         if is_identify:
@@ -293,3 +307,9 @@ with col1:
                 override_height=75,
                 debounce_time=0)
 
+            st.download_button('Download vector results as csv', lcms_results.to_csv(sep='\t',
+                                                                    index=False).encode('utf-8'),
+                               f"{uploaded_file.name}_vector_results.csv",
+                               "text/csv",
+                               key='download-csv1'
+                               )

@@ -136,8 +136,22 @@ with col1:
             st.write('Table of identified Peaks:')
             st.write(id_results['data'])
 
+            st.download_button('Download identified Peak as csv', id_results['data'].to_csv(sep='\t',
+                                                                       index=False).encode('utf-8'),
+                               f"{uploaded_file.name}_vector_results.csv",
+                               "text/csv",
+                               key='download-csv'
+                               )
+
             st.write('Table of grouped Peaks:')
             st.write(grouped)
+
+            st.download_button('Download Table as csv', grouped.to_csv(sep='\t',
+                                                                               index=False).encode('utf-8'),
+                               f"{uploaded_file.name}_vector_results.csv",
+                               "text/csv",
+                               key='download-csv1'
+                               )
 
 
             vec_df = pd.DataFrame(oligos.group2vec(id_results['data']))
@@ -157,3 +171,10 @@ with col1:
                 refresh_on_update=True,
                 override_height=75,
                 debounce_time=0)
+
+            st.download_button('Download vector results as csv', vec_df.to_csv(sep='\t',
+                                                                                     index=False).encode('utf-8'),
+                               f"{uploaded_file.name}_vector_results.csv",
+                               "text/csv",
+                               key='download-csv2'
+                               )

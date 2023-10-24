@@ -1,7 +1,9 @@
 import matplotlib.pyplot as plt
+from matplotlib.widgets import RectangleSelector
 import pandas as pd
 import pickle
 import numpy as np
+from tqdm import tqdm
 
 from bokeh.plotting import figure, show
 from bokeh.palettes import viridis, magma, inferno, cividis
@@ -54,6 +56,7 @@ class massSpec():
         self.title = title
         self.ms2 = ms2
         self.intens = intens
+        self.color = 'blue'
 
     def draw_spec(self, is_show=True):
 
@@ -62,7 +65,54 @@ class massSpec():
         plt.ylabel('intensity')
 
         for x, y in zip(self.ms2, self.intens):
-            plt.plot([x, x], [0, y], '-', color='black')
+            plt.plot([x, x], [0, y], '-', color=self.color)
+
+        if is_show:
+            plt.show()
+
+class massSpec_colorlist():
+    def __init__(self, ms2, intens, colorlist, title='ms spectra'):
+        self.title = title
+        self.ms2 = ms2
+        self.intens = intens
+        self.color = colorlist
+
+    def draw_spec(self, is_show=True):
+
+        plt.title(self.title)
+        plt.xlabel('mz')
+        plt.ylabel('intensity')
+
+        for x, y, c in zip(self.ms2, self.intens, self.color):
+            plt.plot([x, x], [0, y], '-', color=c)
+
+        if is_show:
+            plt.show()
+
+class massSpec_subplots():
+    def __init__(self, mz_list, intens_list, title_list):
+        self.mz_list = mz_list
+        self.intens_list = intens_list
+        self.title_list = title_list
+        self.color = 'blue'
+        self.figsize = (10, 6)
+
+    def draw_plots(self, rows, cols, is_show=True):
+
+        fig, axs = plt.subplots(rows, cols, figsize=self.figsize)
+
+        number = 0
+        for i in tqdm(range(rows)):
+            for j in range(cols):
+                if number < len(self.mz_list):
+                    for x, y in zip(self.mz_list[number], self.intens_list[number]):
+                        axs[i, j].plot([x, x], [0, y], '-', color=self.color)
+                        axs[i, j].set_title(f'Charge {self.title_list[number]}')
+                        if i == 2:
+                            axs[i, j].set_xlabel('m/z')
+                        if j == 0:
+                            axs[i, j].set_ylabel('intensity')
+                number += 1
 
         if is_show:
             plt.show()
@@ -108,6 +158,56 @@ class matplotlib_lcms2Dmap(map2D):
 
         if self.is_show:
             plt.show()
+
+class matplotlib_lcms2Dmap_callback(map2D):
+    def __init__(self, rt, mz, intens, title='lcms data', x_labe='Retention time, s', y_label='Mass/Charge'):
+        super().__init__(rt, mz, intens)
+
+        self.transperancy = 0.6
+        self.title = title
+        self.x_label = x_labe
+        self.y_label = y_label
+
+        self.select_callback = None
+        self.toggle_selector = None
+        self.show_text = None
+
+        self.font = {'family': 'serif',
+                'color': 'darkred',
+                'weight': 'normal',
+                'size': 16,
+                }
+
+    def draw_map(self, is_show=True):
+
+        fig, current_ax = plt.subplots()
+        #plt.clf()
+        plt.title(self.title)
+        plt.scatter(self.data['rt'], self.data['mz'], s=3, color=self.color, alpha=self._alphas)
+
+        if self.show_text != None:
+            print(self.show_text)
+            for t, coord in zip(self.show_text['text'], self.show_text['coord']):
+                plt.text(coord[0], coord[1], t, fontdict=self.font)
+
+        plt.xlabel(f'{self.x_label}')
+        plt.ylabel(f'{self.y_label}')
+        plt.grid(True)
+
+        RS = RectangleSelector(current_ax, self.select_callback,
+                                               useblit=True,
+                                               button=[1, 3],  # don't use middle button
+                                               minspanx=5, minspany=5,
+                                               spancoords='pixels',
+                                               interactive=True)
+        plt.connect('key_press_event', self.toggle_selector)
+
+        self.is_show = is_show
+
+        if self.is_show:
+            plt.show()
+        else:
+            fig.canvas.draw()
 
 class labeled_ms_map(map2D):
     def __init__(self, rt, mz, intens, labels, title='lcms data'):
@@ -406,9 +506,10 @@ class bokeh_mass_map(bokeh_ms_map):
         self.__set_colors()
 
     def __set_colors(self):
-        norm_intens = np.log(self.data['intens'].values)
+        norm_intens = np.log(self.data['intens'].values + 1)
         #norm_intens = np.log2(self.data['intens'].values)
         #norm_intens = np.sqrt(self.data['intens'].values)
+        print(np.min(norm_intens), np.max(norm_intens))
         norm_intens = (norm_intens - np.min(norm_intens)) / (np.max(norm_intens) - np.min(norm_intens))
         norm_intens = [int(round(i*205 + 50)) for i in norm_intens]
 
@@ -473,4 +574,24 @@ def test1():
 
 
 if __name__ == '__main__':
-    test1()
+    #test1()
+    import matplotlib.pyplot as plt
+    import numpy as np
+    from numpy.random import rand
+
+    fig, ax = plt.subplots()
+    ax.plot(rand(100), rand(100), picker=3)
+
+
+    # 3, for example, is tolerance for picker i.e, how far a mouse click from
+    # the plotted point can be registered to select nearby data point/points.
+
+    def on_pick(event):
+        global points
+        line = event.artist
+        xdata, ydata = line.get_data()
+        print('selected point is:', np.array([xdata[ind], ydata[ind]]).T)
+
+
+    cid = fig.canvas.mpl_connect('pick_event', on_pick)
+

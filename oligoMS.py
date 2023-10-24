@@ -689,7 +689,7 @@ class oligoPipeline():
     def pipeline(self):
 
         if self.fn:
-            data, bkg = open_mzml(self.fn, self.load_int_treshold, self.max_mz, self.rt_interval[0])
+            data, bkg = openMSdata(self.fn, self.load_int_treshold, self.max_mz, self.rt_interval[0])
             data = substract_bkg(data, bkg, treshold=self.bkg_treshold)
             for i in range(self.bkg_polish_count):
                 map = get_intensity_map(data, low_treshold=self.low_intens_treshold, param=self.polish_param)
@@ -745,6 +745,101 @@ class oligoPipeline():
         #    s += out_d[k]
         #print(s)
         return out_d
+
+class oligoMS_clas_pipeline():
+
+    def __init__(self, filename):
+
+        self.filename = filename
+        self.int_treshold = 1000
+        self.max_mz = 3200
+        self.rt_left = 100
+        self.bkg_treshold = 500
+        self.low_intens_treshold = 2000
+        self.neighbor_treshold = 30
+        self.rt_interval = (110, 1400)
+        self.is_positive = False
+        self.class_find_mass_delta = 0.6
+        self.rt_gap_treshold = 2
+
+        self.deconv = None
+        self.deconv_data = None
+        self.grouped = None
+
+    def __internal_pipeline(self):
+        data, bkg = openMSdata(self.filename, int_treshold=self.int_treshold,
+                                    max_mz=self.max_mz, rt_left=self.rt_left)
+
+        data = substract_bkg(data, bkg, treshold=self.bkg_treshold)
+
+        data_map = get_intensity_map(data, low_treshold=self.low_intens_treshold, param=4)
+
+        data = find_inner_points(data, data_map, neighbor_treshold=self.neighbor_treshold, param=4)
+
+        self.deconv = oligosDeconvolution(data[:, 0], data[:, 1], data[:, 2], is_positive=self.is_positive)
+
+        self.deconv_data = self.deconv.deconvolute()
+
+        self.deconv_data = self.deconv.rt_filtration(self.deconv_data, self.rt_interval[0], self.rt_interval[1])
+
+    def find_class(self):
+        self.__internal_pipeline()
+
+        self.deconv_data['class2'] = np.zeros(self.deconv_data.shape[0])
+
+        rt = sorted(list(self.deconv_data['rt'].unique()))
+
+        df = self.deconv_data[self.deconv_data['rt'] == rt[0]]
+        uclass = list(df['class'].unique())
+
+        for i in range(len(uclass)):
+            self.deconv_data.loc[(self.deconv_data['rt'] == rt[0]) &
+                                 (self.deconv_data['class'] == uclass[i]), 'class2'] = i
+
+        # deconv_data[deconv_data['rt']==rt[0]]
+        for i in tqdm(range(1, len(rt))):  # len(rt)):
+            df_old = self.deconv_data[self.deconv_data['rt'] == rt[i - 1]]
+            old_class = list(df_old['class2'].unique())
+
+            df = self.deconv_data[self.deconv_data['rt'] == rt[i]]
+            uclass = list(df['class'].unique())
+
+            class_count = self.deconv_data['class2'].max() + 1
+            # print(class_count)
+            for j in range(len(uclass)):
+                c_mass = df[df['class'] == uclass[j]]['mass'].max()
+                ctrl = False
+                old_c = 0
+                for k in range(len(old_class)):
+                    old_mass = df_old[df_old['class2'] == old_class[k]]['mass'].max()
+                    # print(rt[i], c_mass, old_mass)
+                    if abs(c_mass - old_mass) <= self.class_find_mass_delta:
+                        ctrl = True
+                        old_c = old_class[k]
+                        # print(rt[i], c_mass, old_mass)
+                        break
+                if ctrl:
+                    self.deconv_data.loc[
+                        (self.deconv_data['rt'] == rt[i]) & (self.deconv_data['class'] == uclass[j]), 'class2'] = old_c
+                else:
+                    self.deconv_data.loc[
+                        (self.deconv_data['rt'] == rt[i]) & (self.deconv_data['class'] == uclass[j]), 'class2'] = class_count
+                    class_count += 1
+
+    def groupping(self):
+        if self.deconv != None:
+            self.grouped = self.deconv_data.groupby('class2').agg({
+                'mz': ['min', 'max'],
+                'charge': ['min', 'max'],
+                'intens': 'sum',
+                'mass': 'mean',
+                'mono_mass': ['min', 'max'],
+                'rt': ['min', 'max']
+            })
+            self.grouped.reset_index(inplace=True)
+            self.grouped.sort_values(by=('mass', 'mean'), ascending=True, inplace=True)
+            self.grouped = self.grouped[(self.grouped[('rt', 'max')] - self.grouped[('rt', 'min')]) > self.rt_gap_treshold]
+
 
 def oligoBase_lcms_file(input_csv):
     input_df = pd.read_csv(input_csv)
