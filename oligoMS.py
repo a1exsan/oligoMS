@@ -932,8 +932,62 @@ def test_pipeline():
 
     oligoBase_lcms_file('/home/alex/Documents/OligoSynt/DB/lsms_files.csv')
 
+def test_peptide(n):
+
+    seq = 'VHYPTSHPQLKGMSLKKIPTKTNT'  # 7
+    seq = 'ARHPHPHLSFMAIPPKKNQDKTEI'  # 8
+    seq = 'ARHPHPHLSFMAIPPKKDQDKTEI'  # 1
+    seq = 'AHHPHPRPSFLAIPPKKTQDKAVI'  # 3
+    seq = 'VHRPHLHPSFTAIPAKKIQDKTGI'  # 4
+    seq = 'ARHPHPRLSFMAIPPKKNQDKTDI'  # 5
+    seq = 'ERRPRPRPSFIAIPPKKTQDKTVN'  # 6
+    seq = 'ARHPHPHLSFMAIPPKKNQDKTEI'  # 8
+    pep = AASequence(seq)
+    print(AASequence(seq).getAvgMass())
+    for i in range(len(seq) - 1):
+        prefix, suffix = pep.get_fragments(i + 1)
+        print(i, prefix, suffix)
+        print(i, AASequence(prefix).getAvgMass(), AASequence(suffix).getAvgMass(), '\n')
+
+
+def test2_peptide_deletions():
+
+    seq = 'VHYPTSHPQLKGMSLKKIPTKTNT'  # 7
+    seq = 'ARHPHPHLSFMAIPPKKNQDKTEI'  # 8
+    seq = 'ARHPHPHLSFMAIPPKKDQDKTEI'  # 1
+    seq = 'AHHPHPRPSFLAIPPKKTQDKAVI'  # 3
+    seq = 'VHRPHLHPSFTAIPAKKIQDKTGI'  # 4
+    seq = 'ARHPHPRLSFMAIPPKKNQDKTDI'  # 5
+    seq = 'ERRPRPRPSFIAIPPKKTQDKTVN'  # 6
+    #seq = 'ARHPHPHLSFMAIPPKKNQDKTEI'  # 8
+    pep = AASequence(seq)
+    print(AASequence(seq).getAvgMass())
+    for i in range(len(seq) - 2):
+        del_seq = seq[: i + 1] + seq[i + 2 :]
+        print(i, seq, AASequence(seq).getAvgMass())
+        print(i, del_seq, AASequence(del_seq).getAvgMass(), '\n')
+
+def test_peptide_seq(seq):
+
+    pep = AASequence(seq)
+    print(AASequence(seq).getAvgMass())
+    for i in range(len(seq) - 1):
+        prefix, suffix = pep.get_fragments(i + 1)
+        print(i, prefix, suffix)
+        print(i, AASequence(prefix).getAvgMass(), AASequence(suffix).getAvgMass(), '\n')
+
+
 
 if __name__=='__main__':
 
     #test_deconv()
-    test_pipeline()
+    #test_pipeline()
+    #test_peptide()
+    #test_peptide()
+    #test2_peptide_deletions()
+
+    #test_peptide_seq('ERRPRPRPSFIAIPPKKTQDKTVN') #6
+    #test_peptide_seq('ERRPRPRPSFIAIPKKTQDKTVN') #6
+
+    test_peptide_seq('ERRPRPRPSFIAIPPKKTQDKTVN') #8
+    #test_peptide_seq('ARHPHPHLSFMAIPKKNQDKTEI')  #8
